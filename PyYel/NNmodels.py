@@ -8,10 +8,27 @@ from torchvision import datasets, transforms
 
 class CNN(nn.Module):
     """
-    A simple CNN with a flattened output and linear classifying layers.
+    A simple classifying CNN with a one hot encocoded output.
+    \n
     Loss: CrossEntropyLoss
+    Input dimensions: (batch, in_channels, height, width)
+    \n
+    Architechture:
+        Conv2d(filters, kernel=(3,3), padding=1, stride=1) -> ReLU, Maxpool(2, 2) ->\n
+        Conv2d(4*filters, kernel=(3,3), padding=1, stride=1) -> ReLU, Maxpool(2, 2) -> Flatten -> \n
+        Linear(in_channels*filters*height*width, hidden_layers) -> ReLU -> Linear(hidden_layers, output_size) 
+    \n
+
+    Args:
+        in_channels:
+            Images: number for color channels. 1 for grayscale, 3 for RGB...
+            Other: N/A
+        filters: number of filters to apply and weighten (3x3 fixed kernel size)
+        hidden_layers: classifying layers size/number of neurons
+        output_size: number of labels, must be equal to the length of the one hot encoded target vector.
     """
-    def __init__(self, in_channels=1, output_size=10, filters=16, hidden_layers=128, **kwargs):
+
+    def __init__(self, in_channels=1, filters=16, hidden_layers=128, output_size=10, **kwargs):
         super(CNN, self).__init__()
         
         self.in_channels = in_channels
@@ -25,7 +42,7 @@ class CNN(nn.Module):
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=filters, kernel_size=3, padding=1, stride=1)
         self.conv2 = nn.Conv2d(in_channels=filters, out_channels=4*filters, kernel_size=3, padding=1, stride=1)
 
-        self.linear1 = nn.Linear(self.num_flat_features(torch.randn(in_channels, filters, 32, 32)), self.hidden_layers)
+        self.linear1 = nn.Linear(self.num_flat_features(torch.ones(in_channels, filters, 32, 32)), self.hidden_layers)
         self.linear2 = nn.Linear(self.hidden_layers, out_features=output_size)
 
     def forward(self, x):
