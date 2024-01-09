@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import NNmodels
+from PyYel.NNmodels import *
 
 import torch
 import torch.nn as nn
@@ -19,12 +19,14 @@ class Trainer():
                  model, train_dataloader: torch.Tensor, test_dataloader: torch.Tensor,
                  model_name="model", num_epochs=10,
                  input_path="", output_path="",
+                 lr=0.001,
                  **kwargs
                  ) -> None:
         
         self.model = model
         self.model_name = model_name
         self.num_epochs = num_epochs
+        self.lr = lr
 
         self.input_path = input_path
         self.output_path = output_path
@@ -44,11 +46,12 @@ class Trainer():
             
         criterion = nn.CrossEntropyLoss()
 
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         self.model.train() 
 
         running_loss = 0.0
         losses_list = []
+        best_loss = 1e12
         for epoch in tqdm(range(self.num_epochs)):
 
             for inputs, targets in self.train_dataloader:
@@ -64,6 +67,13 @@ class Trainer():
                 running_loss += loss.item()
                 losses_list.append(loss.item())
 
+                if loss.item() < best_loss:
+                    loss_epoch = epoch
+                    best_loss = loss.item()
+                    # torch.save(self.model.state_dict(), f"{self.output_path}/{self.model_name}_weights_{self.num_epochs}e.pth")
+                    torch.save(self.model, f"{self.output_path}/{self.model_name}_{self.num_epochs}e.pth")
+            
+        print(f"Finished training, {self.model_name}_{self.num_epochs}e.pth saved at epoch {loss_epoch}")
         print(f"Final loss: {loss.item()}")
 
         plt.semilogy(losses_list)
@@ -73,9 +83,6 @@ class Trainer():
         plt.savefig(f"{self.output_path}/Loss_{self.model_name}_{self.num_epochs}e.png")
         # plt.show()
 
-        # torch.save(self.model.state_dict(), f"{self.output_path}/{self.model_name}_weights_{self.num_epochs}e.pth")
-        torch.save(self.model, f"{self.output_path}/{self.model_name}_{self.num_epochs}e.pth")
-        print(f"Finished training, {self.model_name}_{self.num_epochs}e.pth saved")
 
         return None
 
@@ -111,7 +118,7 @@ class Tester():
                 test_predicted = torch.argmax(self.model(test_features), dim=1).numpy()
 
                 test_success = np.sum(np.equal(test_predicted, test_labels))
-                print(f"testing success rate: {test_success/test_predicted.shape[-1]:.4f}")
+                print(f"testing accuracy: {test_success/test_predicted.shape[-1]:.4f}")
 
             for train_features, train_labels in self.train_dataloader: # Tests overfitting
 
@@ -125,6 +132,8 @@ class Tester():
         # labels_values, test_counts = np.unique(test_labels, return_counts=True)
         # print(pred_counts)
         # print(test_counts)
+        
+        return test_predicted
 
 class Loader():
 
@@ -137,7 +146,6 @@ class Loader():
         self.model_name = model_name
         self.output_model_path = input_path
 
-
         self.in_channels = in_channels
         self.output_size = output_size
         self.filters = filters
@@ -145,11 +153,11 @@ class Loader():
         self.input_size = input_size
     
     def getModel(self):
-        self.runPipeline()
+        self.loadModel()
         return self.model
     
     def getWeights(self):
-        self.runPipeline()
+        self.loadWeights()
         return self.weights
 
     def runPipeline(self):
@@ -166,14 +174,14 @@ class Loader():
             
         try: 
             self.model = torch.load(f"{self.output_model_path}/{self.model_name}")
-            print(f"Loading {self.model_name} weights")
+            print(f"{self.model_name} weights loaded.")
         except:
-            None
-        try: 
-            self.model = torch.load(f"{self.output_model_path}/{self.model_name}.pth")
-            print("Model loaded")
-        except:
-            None
+            print("Failed to load weights. Trying to load the complete model.")
+            try: 
+                self.model = torch.load(f"{self.output_model_path}/{self.model_name}.pth")
+                print("Model loaded")
+            except:
+                print("Failed to load weights and model.")
 
         return self.model
 

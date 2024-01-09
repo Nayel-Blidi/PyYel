@@ -28,7 +28,7 @@ class CNN(nn.Module):
         output_size: number of labels, must be equal to the length of the one hot encoded target vector.
     """
 
-    def __init__(self, in_channels=1, filters=16, hidden_layers=128, output_size=10, **kwargs):
+    def __init__(self, in_channels=1, filters=16, hidden_layers=128, output_size=10, input_size=32, **kwargs):
         super(CNN, self).__init__()
         
         self.in_channels = in_channels
@@ -42,7 +42,7 @@ class CNN(nn.Module):
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=filters, kernel_size=3, padding=1, stride=1)
         self.conv2 = nn.Conv2d(in_channels=filters, out_channels=4*filters, kernel_size=3, padding=1, stride=1)
 
-        self.linear1 = nn.Linear(self.num_flat_features(torch.ones(in_channels, filters, 32, 32)), self.hidden_layers)
+        self.linear1 = nn.Linear(self.num_flat_features(torch.ones(in_channels, filters, input_size, input_size)), self.hidden_layers)
         self.linear2 = nn.Linear(self.hidden_layers, out_features=output_size)
 
     def forward(self, x):
@@ -132,6 +132,9 @@ class LayeredNN(nn.Module):
 
     def forward(self, x):
         
+        # Enforces the right input dimension (flattening)
+        x = x.view(-1, self.input_size)
+
         x = self.input_layer(x)
         x = self.batchnorm(x)
         x = self.relu(x)
@@ -145,6 +148,55 @@ class LayeredNN(nn.Module):
         x = self.layer3(x)
         x = self.relu(x)
         
+        x = self.output_layer(x)  
+
+        return x
+    
+
+class SparseLayeredNN(nn.Module):
+    def __init__(self, input_size, output_size, hidden_layers=128, p=0.1, **kwargs):
+        super(SparseLayeredNN, self).__init__()
+
+        self.input_size = input_size
+        self.hidden_layers = hidden_layers
+        self.output_size = output_size
+
+        self.flatten = nn.Flatten()
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout1d(p=p)
+
+        self.input_layer = nn.Linear(input_size, hidden_layers)
+        self.batchnorm = nn.BatchNorm1d(num_features=hidden_layers)
+        
+        self.layer1 = nn.Linear(hidden_layers, hidden_layers//2)
+        self.batchnorm1 = nn.BatchNorm1d(num_features=hidden_layers//2)
+        self.layer2 = nn.Linear(hidden_layers//2, hidden_layers//4)
+        self.batchnorm2 = nn.BatchNorm1d(num_features=hidden_layers//4)
+        self.layer3 = nn.Linear(hidden_layers//4, hidden_layers//8)
+        self.batchnorm3 = nn.BatchNorm1d(num_features=hidden_layers//8)
+
+        self.output_layer = nn.Linear(hidden_layers//8, output_size)
+
+    def forward(self, x):
+        
+        # Enforces the right input dimension (flattening)
+        x = x.view(-1, self.input_size)
+
+        x = self.input_layer(x)
+        x = self.batchnorm(x)
+        x = self.relu(x)
+
+        x = self.layer1(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        x = self.layer2(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        x = self.layer3(x)
+        x = self.relu(x)
+
         x = self.output_layer(x)  
 
         return x

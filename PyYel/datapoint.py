@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from torchvision import datasets, transforms
+import torch.nn.functional as F
 
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
@@ -111,26 +112,42 @@ class Datapoint():
             print(self.X_train.shape, self.Y_train.shape, self.X_test.shape, self.Y_test.shape)
         return self.X_train, self.X_test, self.Y_train, self.Y_test
 
+    def splitOverwrite(self, X_train, X_test, Y_train, Y_test):
+        self.X_train = X_train
+        self.X_test = X_test
+        self.Y_train = Y_train
+        self.Y_test = Y_test
+        return self.X_train, self.X_test, self.Y_train, self.Y_test
+
     def tensorize(self):
         self.train_dataset = TensorDataset(torch.from_numpy(self.X_train).float(), torch.from_numpy(self.Y_train).float())
         self.test_dataset = TensorDataset(torch.from_numpy(self.X_test).float(), torch.from_numpy(self.Y_test).float())
         return self.train_dataset, self.test_dataset
 
     def normalize(self):
+        """
+        Normalizes the X features, y stays constant.
+
+        """
         mean = np.mean(self.X, axis=0)
         std = np.std(self.X, axis=0)
         normalization = transforms.Normalize(mean=mean, std=std)
 
-        self.train_dataset.transform = transforms.Compose([normalization])
-        self.test_dataset.transform = transforms.Compose([normalization])
+        if (self.height != 1) and (self.width != 1):
+            self.train_dataset = [(normalization(sample[0]), sample[1]) for sample in self.train_dataset]
+            self.test_dataset = [(normalization(sample[0]), sample[1]) for sample in self.test_dataset]
+        else:
+            self.train_dataset = [(F.normalize(sample[0].view(1, -1)), sample[1]) for sample in self.train_dataset]
+            self.test_dataset = [(F.normalize(sample[0].view(1, -1)), sample[1]) for sample in self.test_dataset]
+
 
         return self.train_dataset, self. test_dataset
 
     def dataload(self, batch_size=None):
         if not batch_size:
             batch_size = self.batch_size
-        self.test_dataloader = DataLoader(self.test_dataset, batch_size=batch_size, shuffle=True)
         self.train_dataloader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=True)
+        self.test_dataloader = DataLoader(self.test_dataset, batch_size=batch_size, shuffle=True)
         return self.train_dataloader, self.test_dataloader
 
 
