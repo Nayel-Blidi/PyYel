@@ -160,3 +160,7 @@ cython_debug/
 #.idea/
 *.pth
 *.png
+*.jpg
+*.txt
+_input_test
+_output_test

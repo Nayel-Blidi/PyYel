@@ -2,17 +2,17 @@
 import numpy as np
 
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from torchvision import datasets, transforms
+from torchvision import transforms
 import torch.nn.functional as F
 
 from sklearn.model_selection import train_test_split
-from tqdm import tqdm
 
 
 class Datapoint():
-
+    """
+    The standard datatype used in PyYel.
+    """
     def __init__(self, X, y) -> None:
         self.X = X
         self.y = y
@@ -151,4 +151,14 @@ class Datapoint():
         return self.train_dataloader, self.test_dataloader
 
 
+class Datatensor():
+    """
+    Tensorized datapoint. 
+    Pytorch format. 
+    """
+    def __init__(self, datapoint) -> None:
+        
+        self.data = datapoint
+        pass
+        
 
