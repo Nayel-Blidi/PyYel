@@ -162,5 +162,6 @@ cython_debug/
 *.png
 *.jpg
 *.txt
+*.egg-info/
 _input_test
 _output_test
