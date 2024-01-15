@@ -1,5 +1,8 @@
 
 import numpy as np
+import abc
+
+from tqdm import tqdm
 
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -8,6 +11,23 @@ import torch.nn.functional as F
 
 from sklearn.model_selection import train_test_split
 
+from abc import ABC, abstractmethod
+
+class DatapointInterface(ABC):
+    """
+    This interface is fake.
+    The interface isn't implemented, as the purpose of the abtract methods may be harder to 
+    understand by the user when calling it.
+    For developpers, these methods serve as guidelines to implement classes with similar functionnalities.
+    """
+    @abstractmethod
+    def getOriginalDatapoint(self):
+        pass
+
+    @abstractmethod
+    def getModifiedDatapoint(self):
+        pass
+    
 
 class Datapoint():
     """
@@ -77,6 +97,210 @@ class Datapoint():
             
         return self.batch_size, self.in_channels, self.height, self.width, self.output_size
 
+
+class YelDatapoint():
+    """
+    A standard PyYel datapoint object, with improved compatibility.
+
+    Args:
+        data: input data
+    
+    Methods:
+        getOriginalData(): Returns the data originally fed into the class when initialized. Allows data recovery.
+        getModifiedData(): Returns the data in its current state.
+        resetData(): Resets the modified data to its original state. Allows reimplementation of methods.
+        reshape(): Reshapes the modified data. Replaces modified data with its new reshaped format.  
+    """
+
+    def __init__(self, data) -> None:
+        self.data_original = data
+        self.data_modified = data
+    
+    def runPipeline(self):
+        """
+        A standard pipeline that tries to process the data into a valid format.
+        If it fails, steps will have to be implemented manually. 
+        """
+        pipeline = [
+            self.reshape(),
+        ]
+        [step for step in tqdm(pipeline)]
+        return self.getModifiedData
+
+
+    def getOriginalData(self):
+        return self.data_original
+    def getModifiedData(self):
+        return self.data_modified
+    
+    def resetData(self):
+        self.data_modified = self.data_original
+
+    def reshape(self, shape=None):
+        """
+        Reshapes the YelDatapoint to a desired shape. 
+        Args:
+            shape: Desired shape.
+                [None]: Automatically tries to reshape the array to a flat (batch_size, -1) 
+                        or an image (batch_size, height, width, channels) format. 
+                [(x1, x2, ... xn)]: Reshapes the array according to the tupple of wanted format.
+        """
+        if shape is None:
+            self._reshape()
+        else:
+            try: self.data_modified.reshape(shape)
+            except:
+                message = f"Incompatible current shapes {self.data_modified.shape} and expected shapes {shape}." 
+                raise ValueError(message)
+        
+    def oneHotEncode(self):
+        """
+        Applies one-hot encoding to a 0D or 1D input.
+        Unlikely to be usefull if not applied to a targets/labels vector. 
+        """
+
+    def _reshape(self):
+        dims = self.data_modified.shape
+        if len(dims) == 1:
+            # Promotes vector to column array (1D table)
+            self.data_modified = self.data_modified.reshape((-1, 1))
+        elif len(dims) == 2:
+            # Assumes the data is a 2D table
+            None
+        elif len(dims) == 3:
+            if (dims[2] == 1) or (dims[2] == 3):
+                # Adds batch dimension to a presumed unique image
+                self.data_modified = self.data_modified.reshape((1, dims[0], dims[1], dims[2]))
+
+            elif (dims[0] == 1) or (dims[0] == 3):
+                # Changes the presumed shape (channels, height, width) to (height, width, channels)
+                self.data_modified = np.transpose(self.data_modified, (1, 2, 0))
+                # Adds batch dimension to a presumed unique image
+                self.data_modified = self.data_modified.reshape((1, dims[0], dims[1], dims[2]))
+        elif len(dims) == 4:
+            if (dims[0] == 1) or (dims[0] == 3):
+                # Changes the presumed shape (batch, channels, height, width) to (batch, height, width, channels)
+                self.data_modified = np.transpose(self.data_modified, (1, 2, 0))
+        else:
+            # n-dims array, flattened to (batch, features)
+            self.data_modified = self.data_modified.reshape((dims[0], -1))
+
+
+
+class YelDataset():
+    """
+    A standard PyYel dataset object, of combined features and targets datapoints.
+
+    Args:
+        X: an array-like input of features
+            [list]: if the input is a list of datapoints, it will be concatenated into a single array.
+            [array]: if the input is an array, the first dimension will be considered to be the batch.
+        Y: an array-like input of targets
+            [list]: if the input is a list of targets, it will be concatenated into a single array.
+            [array]: if the input is a 1D or 2D array, every line is considered to be a target of a feature.
+    """
+
+    def __init__(self, X, Y) -> None:
+        self.X_original = X
+        self.Y_original = Y
+
+        self.X_modified = X
+        self.Y_modified = Y
+
+
+        self._ensureCompatibility()
+
+    def getOriginalDataset(self) -> tuple:
+        return self.X_original, self.Y_original
+
+    def getModifiedDataset(self) -> tuple:
+        return self.X_modified, self.Y_modified
+    
+    def getDataset(self) -> tuple:
+        return self.X_modified, self.Y_modified
+    
+    def resetDataset(self):
+        """
+        Returns the modified X and Y data to their original input. 
+        Usefull to cancel a processing step, or to reuse the datapoint without defining it again.
+        """
+        self.X_modified = self.X_original
+        self.Y_modified = self.Y_original
+
+    def stackDataset(self):
+        """
+        For an array-like of unbatched data, stacks the X and Y datapoints into a single dataset.
+        If the first axis of the features is of dimension 1, it will be considered to be the batch axis. (1, :, :, ...)
+        If the features are of dimension >=4, the 1st dimension will be considered to be the batch axis. (n, :, :, ...)
+        If the features are of dimension <=3, the batch dimension will be added as axis=0. (m, n, :)
+        """
+        if type(self.X_modified) is list:
+            print(self.X_modified[0].shape)
+            # self.X_modified = np.stack(self.X_modified, axis=0)
+
+            if len(self.X_modified[0].shape) >=4:
+                # Assumes the passed data 1st dimension is the batch
+                self.X_modified = np.concatenate(self.X_modified, axis=0)
+            elif self.X_modified[0].shape[0] == 1:
+                self.X_modified = np.concatenate(self.X_modified, axis=0)
+            else:
+                # Assumes the data is missing a batch size (most likely a list of images)
+                self.X_modified = [np.expand_dims(feature, axis=0) for feature in self.X_modified]
+                print(self.X_modified[0].shape)
+                self.X_modified = np.stack(self.X_modified, axis=1).squeeze(axis=0)
+
+            # if self.X_modified[0].shape[0] == 1:
+            #     # The 1st dimension is the batch
+            #     self.X_modified = np.stack(self.X_modified, axis=1).squeeze(axis=0)
+            # else:
+            #     # The 1st dimension isn't the bach, so it is added
+            #     self.X_modified = [np.expand_dims(feature, axis=0) for feature in self.X_modified]
+            #     print(self.X_modified[0].shape)
+            #     self.X_modified = np.stack(self.X_modified, axis=1).squeeze(axis=0)
+
+    def splitDataset(self, test_size=0.25, display=False):
+        self.X_train, self.X_test, self.Y_train, self.Y_test = train_test_split(self.X_modified, self.Y_modified, test_size=test_size)
+        if display:
+            print("> X_train.shape, Y_train.shape, X_test.shape, Y_test.shape:")
+            print(self.X_train.shape, self.Y_train.shape, self.X_test.shape, self.Y_test.shape)
+        return self.X_train, self.X_test, self.Y_train, self.Y_test
+
+    def _ensureCompatibility(self):
+
+        if type(self.X_modified) is list:
+            return True
+        else:
+            if self.X_modified.shape[0] == self.Y_modified.shape[0]:
+                return True
+            for dimensions in self.X_modified.shape:
+                if dimensions in self.Y_modified.shape:
+                    return True
+                
+        message = f"No compatible shapes found between X {self.X_original.shape} and Y {self.Y_original.shape} inputs."
+        raise ValueError(message)
+
+
+
+class Datatensor():
+    """
+    Tensorized datapoint. 
+    Pytorch format. 
+    """
+
+    def __init__(self, X, Y) -> None:
+        self.X_original = X
+        self.Y_original = Y
+
+        self.X_modified = X
+        self.Y_modified = Y
+
+    def getOriginalTensors(self):
+        return self.X_original, self.Y_original
+
+    def getModifiedTensors(self):
+        return self.X_modified, self.Y_modified
+        
+
     def runPipeline(self):
         datapoint_pipeline = [
             self.split(),
@@ -87,9 +311,6 @@ class Datapoint():
         for step in datapoint_pipeline:
             step
         return None
-
-    def getRawData(self):
-        return self.X, self.y
     
     def getSplitData(self):
         return self.X_train, self.X_test, self.Y_train, self.Y_test
@@ -149,16 +370,4 @@ class Datapoint():
         self.train_dataloader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=True)
         self.test_dataloader = DataLoader(self.test_dataset, batch_size=batch_size, shuffle=True)
         return self.train_dataloader, self.test_dataloader
-
-
-class Datatensor():
-    """
-    Tensorized datapoint. 
-    Pytorch format. 
-    """
-    def __init__(self, X, Y) -> None:
-        
-        self.X = X
-        pass
-        
 

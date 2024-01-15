@@ -2,6 +2,7 @@
 from .Augmentations import ImageAugmentation
 from ..constants import * 
 from .guis.AugmentationsGUI import ConfigApp
+from .Datapoint import YelDatapoint, YelDataset, Datatensor
 
 # Utils
 import numpy as np
@@ -18,6 +19,50 @@ import json
 # import tensorflow as tf
 
 __all__ = ["Pipeliner", "ImageAugmentationPipeline"]
+
+class Funcs():
+    """
+    Usefull functions with niche usage, that don't deserve to be implemented in a pipeline.
+    
+    Args:
+        None
+    
+    Methods:
+        empty_folder_content(): deletes all the files of a certain type in a folder.
+            folder_path: path to the folder that will be emptied.
+            extensions: list of extensions type to delete.
+    """
+
+    def __init__(self) -> None:
+        None
+
+    def empty_folder_content(folder_path, extensions=['.png', '.txt']):
+        c=0
+        for root, dirs, files in os.walk(folder_path):
+            print(f"Deleting files from {folder_path}.")
+            for file in tqdm(files):
+                if file.endswith(tuple(extensions)):
+                    file_path = os.path.join(root, file)
+                    os.remove(file_path)
+                    c+=1
+        print(f"{c} files deleted from {folder_path}.")
+        return None
+    
+    def open_image(self, image_path):
+        return cv2.imread(image_path)
+
+    def open_image_folder(self, folder_path, extensions=[".png", ".jpg"]):
+        print(f"Reading files from '{folder_path}' and opening those ending with {extensions}.")
+        image_list = [self.open_image(image_path=os.path.join(folder_path, file)) for file in tqdm(os.listdir(folder_path)) if file.endswith(tuple(extensions))]
+        # image_list = [print(os.path.join(folder_path, file)) for file in tqdm(os.listdir(folder_path)) if file.endswith(tuple(extensions))]
+        return image_list
+
+    def generate_dataset(self, X=None, Y=None):
+        X_list = [YelDatapoint(data=data).getModifiedData() for data in X]
+        Y = np.ones((1, len(X_list)))
+        return YelDataset(X=X_list, Y=Y)
+
+
 
 class Pipeliner():
     """
@@ -53,6 +98,8 @@ class Pipeliner():
             raise ValueError("data_type=table: Not supported yet")
         else:
             None
+
+    
 class ImageAugmentationPipeline():
     """
     A utility to process the datapoints augmentations.
@@ -112,13 +159,13 @@ class ImageAugmentationPipeline():
             self.run_config = "DEFAULT"
         elif self.mode == 1:
             print(f"\033[1mAll possible augmentation mode.\033[0m")
-            self.run_config = "GUI"
+            self.run_config = "CUSTOM"
         elif self.mode == 2:
             print(f"\033[1mCustom augmentation mode.\033[0m")
-            self.run_config = "GUI"
+            self.run_config = "CUSTOM"
         elif self.mode == 3:
             print(f"\033[1mConfig augmentation mode.\033[0m")
-            self.run_config = "GUI"
+            self.run_config = "CUSTOM"
             gui = ConfigApp(config_path=os.path.join(DIR_DATA_CONFIGS_PATH, "AugmentationsConfig.ini"))
             gui.mainloop()
 
@@ -499,14 +546,14 @@ class ImageAugmentationPipeline():
     
     def _reset_config(self):
         
-        self.config["GUI"]["augmentation_list"] = "['gray_scale', 'rotation']"
-        self.config["GUI"]["rotation_angle"] = "30"
-        self.config["GUI"]["rotation_resize"] = "1"
-        self.config["GUI"]["noise_std"] = "0.5"
-        self.config["GUI"]["channels_swap_rgb_order"] = "2, 0, 1"
-        self.config["GUI"]["brightness_coeff"] = "120"
-        self.config["GUI"]["contrast_coeff"] = "120"
-        self.config["GUI"]["zoom_coeff"] = "80"
+        self.config["CUSTOM"]["augmentation_list"] = "['gray_scale', 'rotation']"
+        self.config["CUSTOM"]["rotation_angle"] = "30"
+        self.config["CUSTOM"]["rotation_resize"] = "1"
+        self.config["CUSTOM"]["noise_std"] = "0.5"
+        self.config["CUSTOM"]["channels_swap_rgb_order"] = "2, 0, 1"
+        self.config["CUSTOM"]["brightness_coeff"] = "120"
+        self.config["CUSTOM"]["contrast_coeff"] = "120"
+        self.config["CUSTOM"]["zoom_coeff"] = "80"
 
         with open(os.path.join(DIR_DATA_CONFIGS_PATH, "AugmentationsConfig.ini"), 'w') as configfile:
             self.config.write(configfile)

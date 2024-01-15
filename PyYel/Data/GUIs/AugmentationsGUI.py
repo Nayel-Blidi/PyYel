@@ -67,11 +67,11 @@ class ConfigApp(tk.Tk):
         # Save augmentation settings
         for key, entry in self.entries.items():
             value = entry.get()
-            config["GUI"][key] = value
+            config["CUSTOM"][key] = value
 
         # Save augmentation methods
         selected_options = [label for label, var in self.checkbox_vars.items() if var.get() == 1]
-        config["GUI"]["augmentation_list"] = f"{selected_options}"
+        config["CUSTOM"]["augmentation_list"] = f"{selected_options}"
 
         with open(self.config_path, 'w') as configfile:
             config.write(configfile)

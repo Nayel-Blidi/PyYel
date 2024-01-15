@@ -1,3 +1,5 @@
 """
-Networks packages initializer
+Networks module initializer
 """
+
+from . import Compiler, Models
