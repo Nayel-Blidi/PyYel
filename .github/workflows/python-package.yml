@@ -33,10 +33,6 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         repository-url: https://test.pypi.org/legacy/
-    - name: Publish package distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        repository-url: https://pypi.org/
     - name: Install pypa/build
       run: >-
         python3 -m
