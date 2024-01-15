@@ -485,7 +485,8 @@ class ImageAugmentation():
             zoom_factor = self.height / denominator
 
             data = self._imageZoom(zoom_type=self.current_augment, zoom_factor=zoom_factor)
-            self.labelsZoom()
+            if self.positions is not None: #if there are boundary boxes to resize too
+                self.labelsZoom()
         else:
             data = self.data
         

@@ -156,9 +156,9 @@ class Datatensor():
     Tensorized datapoint. 
     Pytorch format. 
     """
-    def __init__(self, datapoint) -> None:
+    def __init__(self, X, Y) -> None:
         
-        self.data = datapoint
+        self.X = X
         pass
         
 

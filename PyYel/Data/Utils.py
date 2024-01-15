@@ -1,5 +1,7 @@
 # PyYel libraries
-from Augmentations import ImageAugmentation
+from .Augmentations import ImageAugmentation
+from ..constants import * 
+from .guis.AugmentationsGUI import ConfigApp
 
 # Utils
 import numpy as np
@@ -15,8 +17,43 @@ import xml.etree.ElementTree as ET
 import json
 # import tensorflow as tf
 
+__all__ = ["Pipeliner", "ImageAugmentationPipeline"]
 
-class pipelineController():
+class Pipeliner():
+    """
+    Wrapper of the utility pipelines.
+    Allows an easier utilization of the library, with simplified inputs.
+
+    Args:
+        data_type: the type of data to process.
+            [image]: the data expected are .png or .jpg images located in the folder /input_path/. Supports .txt, 
+            .xml and .json labels files (boundary boxes).
+            [table]: the data expected are .txt or .csv tables located in the folder /input_path/.
+        input_path: the location of the orignal data folder. Datapoints should be directly accessible (no sub-folder).
+        output_path: the location of the augmented data folder. Augmented datapoints will be saved there.
+        mode: the execution mode.
+            [0]: Default configuration
+            [1]: Full configuration
+            [2]: Command prompt pilotable configuration
+            [3]: GUI interface configuration
+    """
+
+    def __init__(self, data_type, input_path, output_path, mode) -> None:
+        
+        self.data_type = data_type
+        self.input_path = input_path
+        self.output_path = output_path
+        self.mode = mode
+
+        if self.data_type == "image":
+            ImageAugmentationPipeline(input_path=self.input_path,
+                                      output_path=self.output_path,
+                                      mode=self.mode).runPipeline()
+        elif self.data_type == "table":
+            raise ValueError("data_type=table: Not supported yet")
+        else:
+            None
+class ImageAugmentationPipeline():
     """
     A utility to process the datapoints augmentations.
 
@@ -41,24 +78,21 @@ class pipelineController():
         debug: Runs debuging console outputs. Default is [False].
     """
 
-    def __init__(self, main_path, input_path="", output_path="",
-                 mode=0, data_type="image", run_config="DEFAULT", debug=False) -> None:
+    def __init__(self, input_path, output_path, mode=0) -> None:
 
-        self.main_path = main_path
         self.mode = mode
-        self.data_type = data_type
-        self.run_config = run_config
-        self.debug = debug
 
-        self.data_folder = main_path + "data"
-        self.augmented_folder = main_path + "augmented"
-        self.library_folder = main_path + "DataAugmentationLib"
+        self.data_folder = input_path
+        self.augmented_folder = output_path
+
+        self.library_folder = DIR_DATA_PATH
+        self.file_folder = os.path.join(DIR_DATA_PATH, __name__)
 
     def runPipeline(self):
         main_dataAugmentationPipeline = [
+            self.selectMode(),
             self._load_config(),
             self._read_config(),
-            self._debug_config(),
             self.filesListing(),
             self.filesDataframing(),
             self.augmentationsListing(),
@@ -71,6 +105,22 @@ class pipelineController():
             main_pipeline_step
 
         return None
+    
+    def selectMode(self):
+        if self.mode == 0:
+            print(f"\033[1mDefault augmentation mode.\033[0m")
+            self.run_config = "DEFAULT"
+        elif self.mode == 1:
+            print(f"\033[1mAll possible augmentation mode.\033[0m")
+            self.run_config = "GUI"
+        elif self.mode == 2:
+            print(f"\033[1mCustom augmentation mode.\033[0m")
+            self.run_config = "GUI"
+        elif self.mode == 3:
+            print(f"\033[1mConfig augmentation mode.\033[0m")
+            self.run_config = "GUI"
+            gui = ConfigApp(config_path=os.path.join(DIR_DATA_CONFIGS_PATH, "AugmentationsConfig.ini"))
+            gui.mainloop()
 
     # PIPELINE STEPS
     def filesListing(self):
@@ -82,28 +132,18 @@ class pipelineController():
 
         file_list = os.listdir(self.data_folder)
 
-        if self.data_type == "image":
+        self.data_list = []
+        self.data_list = [file for file in file_list if file.endswith(".jpg")]
+        self.data_list = self.data_list + [file for file in file_list if file.endswith(".png")]
 
-            self.data_list = []
-            self.data_list = [file for file in file_list if file.endswith(".jpg")]
-            self.data_list = self.data_list + [file for file in file_list if file.endswith(".png")]
+        self.labels_list = []
+        self.labels_list = [file for file in file_list if file.endswith(".txt")]
+        self.labels_list = self.labels_list + [file for file in file_list if file.endswith(".xml")]
+        self.labels_list = self.labels_list + [file for file in file_list if file.endswith(".json")]
+        self.labels_list = self.labels_list + [file for file in file_list if file.endswith(".tfrecord")]
 
-            self.labels_list = []
-            self.labels_list = [file for file in file_list if file.endswith(".txt")]
-            self.labels_list = self.labels_list + [file for file in file_list if file.endswith(".xml")]
-            self.labels_list = self.labels_list + [file for file in file_list if file.endswith(".json")]
-            self.labels_list = self.labels_list + [file for file in file_list if file.endswith(".tfrecord")]
-
-            if len(self.data_list) == 0:
-                raise ValueError("No image to augment found")
-
-        else:
-            self.data_list = []
-            self.data_list = [file for file in file_list if file.endswith(".txt")]
-            self.data_list = self.data_list + [file for file in file_list if file.endswith(".csv")]
-
-            if len(self.data_list) == 0:
-                raise ValueError("No file to augment found")
+        if len(self.data_list) == 0:
+            raise ValueError("No image to augment found")
             
         return self.data_list, self.labels_list
 
@@ -151,11 +191,8 @@ class pipelineController():
 
             df_files.index.name = "Input_Index"
             df.reset_index(drop=True, inplace=True)
-            df_files.to_csv(self.main_path+"augmented_datapoint_report.csv")
+            df_files.to_csv(os.path.join(self.augmented_folder, "datapoints.csv"))
             self.df_files = df_files
-
-            if self.debug:
-                print(df_files.head())
 
         else:
             None
@@ -276,10 +313,6 @@ class pipelineController():
 
         self.simple_df_files = self.df_files[self.df_files["Positions"].isnull()] # Datapoint without localisation
         self.bbox_df_files = self.df_files[~self.df_files["Positions"].isnull()] # Datapoint with at least 1 boundary box
-
-        if self.debug:
-            print(self.simple_df_files.head())
-            print(self.bbox_df_files.head())
 
         return None
 
@@ -452,7 +485,7 @@ class pipelineController():
         Loads the config.ini file and loads all its parameters.
         """
         self.config = configparser.ConfigParser()
-        self.config.read(self.main_path + "config.ini")
+        self.config.read(os.path.join(DIR_DATA_CONFIGS_PATH, "AugmentationsConfig.ini"))
         return self.config
     
     def _read_config(self):
@@ -475,7 +508,7 @@ class pipelineController():
         self.config["GUI"]["contrast_coeff"] = "120"
         self.config["GUI"]["zoom_coeff"] = "80"
 
-        with open(self.main_path + "config.ini", 'w') as configfile:
+        with open(os.path.join(DIR_DATA_CONFIGS_PATH, "AugmentationsConfig.ini"), 'w') as configfile:
             self.config.write(configfile)
         
         return None
@@ -484,12 +517,11 @@ class pipelineController():
         """
         Prints the config.ini file content.
         """
-        if self.debug:
-            print(self.config.sections())
-            for section in self.config.sections():
-                print(f"[{section}]")
-                for key, value in self.config.items(section):
-                    print(f"{key} = {value}")
+        print(self.config.sections())
+        for section in self.config.sections():
+            print(f"[{section}]")
+            for key, value in self.config.items(section):
+                print(f"{key} = {value}")
         return None
 
 

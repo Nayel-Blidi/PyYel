@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import configparser
+import os
 
 class ConfigApp(tk.Tk):
     def __init__(self, config_path):
@@ -78,7 +79,7 @@ class ConfigApp(tk.Tk):
         return self.destroy()
 
 if __name__ == "__main__":
-    config_path = "C:/Users/Nayel BLIDI/Documents/Git/data-aug-lib-PMI/" + "config.ini"
+    config_path = os.path.abspath("") + "/config.ini"
     app = ConfigApp(config_path=config_path)
     app.mainloop()
 

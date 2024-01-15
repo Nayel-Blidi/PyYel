@@ -2,22 +2,22 @@ from setuptools import setup, find_packages
 
 setup(
     name='PyYel',
-    version='0.0.1',
+    version='0.0.7',
     author='Nayel Maxime BLIDI',
     author_email='nayel.blidi@ipsa.fr',
     description='A data science library that allows easy and quick machine learning solutions deployement.',
-    # long_description='N/A',
-    # long_description_content_type='text/markdown',
+    long_description="A data science library that allows easy and quick machine learning solutions deployement.",
+    long_description_content_type='text/markdown',
     url='https://github.com/Nayel-Blidi/PyYel',
     packages=find_packages(),
+    include_package_data=True,
     install_requires=[
         # List your dependencies here
         'numpy',
         'pandas',
-        'cv2',
         'scikit-learn',
         'configparser',
-        'tkinter',
+        'tk',
         'opencv-python'
     ],
     classifiers=[
