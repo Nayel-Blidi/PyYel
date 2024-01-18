@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='PyYel',
-    version='0.0.7',
+    version='0.0.9',
     author='Nayel Maxime BLIDI',
     author_email='nayel.blidi@ipsa.fr',
     description='A data science library that allows easy and quick machine learning solutions deployement.',

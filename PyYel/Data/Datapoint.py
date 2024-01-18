@@ -158,6 +158,8 @@ class YelDatapoint():
         Applies one-hot encoding to a 0D or 1D input.
         Unlikely to be usefull if not applied to a targets/labels vector. 
         """
+        num_classes = np.max(self.data_original) + 1
+        self.data_modified = np.eye(num_classes)[self.data_modified]
 
     def _reshape(self):
         dims = self.data_modified.shape
@@ -171,7 +173,6 @@ class YelDatapoint():
             if (dims[2] == 1) or (dims[2] == 3):
                 # Adds batch dimension to a presumed unique image
                 self.data_modified = self.data_modified.reshape((1, dims[0], dims[1], dims[2]))
-
             elif (dims[0] == 1) or (dims[0] == 3):
                 # Changes the presumed shape (channels, height, width) to (height, width, channels)
                 self.data_modified = np.transpose(self.data_modified, (1, 2, 0))
@@ -294,18 +295,19 @@ class Datatensor():
         self.X_modified = X
         self.Y_modified = Y
 
+        self._datapointShapes()
+
     def getOriginalTensors(self):
         return self.X_original, self.Y_original
 
     def getModifiedTensors(self):
         return self.X_modified, self.Y_modified
         
-
-    def runPipeline(self):
+    def runPipeline(self, **kwargs):
         datapoint_pipeline = [
-            self.split(),
-            self.tensorize(),
-            self.normalize(),
+            self.split(**kwargs),
+            self.tensorize(**kwargs),
+            self.normalize(**kwargs),
             self.dataload(),
         ]
         for step in datapoint_pipeline:
@@ -320,14 +322,13 @@ class Datatensor():
 
     def getDataloaders(self):
         return self.train_dataloader, self.test_dataloader
-
+    
     def flatten(self):
-        self.X = self.X.reshape((self.batch_size, -1))
-        self._datapointShapes() # Shapes are updated to the flattened one
-        return self.X
+        self.X_modified = self.X_modified.reshape((self.batch_size, -1))
+        return self.X_modified
 
-    def split(self, test_size=0.25, display=False):
-        self.X_train, self.X_test, self.Y_train, self.Y_test = train_test_split(self.X, self.y, test_size=test_size)
+    def split(self, test_size=0.25, display=False, **kwargs):
+        self.X_train, self.X_test, self.Y_train, self.Y_test = train_test_split(self.X_modified, self.Y_modified, test_size=test_size)
         if display:
             print("> X_train.shape, Y_train.shape, X_test.shape, Y_test.shape:")
             print(self.X_train.shape, self.Y_train.shape, self.X_test.shape, self.Y_test.shape)
@@ -340,18 +341,26 @@ class Datatensor():
         self.Y_test = Y_test
         return self.X_train, self.X_test, self.Y_train, self.Y_test
 
-    def tensorize(self):
-        self.train_dataset = TensorDataset(torch.from_numpy(self.X_train).float(), torch.from_numpy(self.Y_train).float())
-        self.test_dataset = TensorDataset(torch.from_numpy(self.X_test).float(), torch.from_numpy(self.Y_test).float())
-        return self.train_dataset, self.test_dataset
+    def tensorize(self, dtype='float', **kwargs):
+        if dtype == 'float':
+            self.train_dataset = TensorDataset(torch.from_numpy(self.X_train).float(), torch.from_numpy(self.Y_train).float())
+            self.test_dataset = TensorDataset(torch.from_numpy(self.X_test).float(), torch.from_numpy(self.Y_test).float())
+        elif dtype == 'long':
+            self.train_dataset = TensorDataset(torch.from_numpy(self.X_train).float(), torch.from_numpy(self.Y_train).long())
+            self.test_dataset = TensorDataset(torch.from_numpy(self.X_test).float(), torch.from_numpy(self.Y_test).long())
 
-    def normalize(self):
+        return self.train_dataset, self.test_dataset
+        
+
+    def normalize(self, delta=1e-6, **kwargs):
         """
         Normalizes the X features, y stays constant.
-
+        Args:
+            delta: small value to avoid division by zero error when normalizing null rows. 
         """
-        mean = np.mean(self.X, axis=0)
-        std = np.std(self.X, axis=0)
+
+        mean = np.mean(self.X_modified, axis=0) + delta
+        std = np.std(self.X_modified, axis=0) + delta
         normalization = transforms.Normalize(mean=mean, std=std)
 
         if (self.height != 1) and (self.width != 1):
@@ -360,7 +369,6 @@ class Datatensor():
         else:
             self.train_dataset = [(F.normalize(sample[0].view(1, -1)), sample[1]) for sample in self.train_dataset]
             self.test_dataset = [(F.normalize(sample[0].view(1, -1)), sample[1]) for sample in self.test_dataset]
-
 
         return self.train_dataset, self. test_dataset
 
@@ -371,3 +379,39 @@ class Datatensor():
         self.test_dataloader = DataLoader(self.test_dataset, batch_size=batch_size, shuffle=True)
         return self.train_dataloader, self.test_dataloader
 
+
+    def _datapointShapes(self, display=False) -> tuple:
+        if len(self.X_modified.shape) == 1:
+            # Data is supposed to be a column of values
+            self.batch_size = self.X_modified.shape[0]
+            self.in_channels = 1
+            self.height = 1
+            self.width = 1
+        elif len(self.X_modified.shape) == 2:
+            # Data is supposed to be a structured frame
+            self.batch_size = self.X_modified.shape[0]
+            self.in_channels = self.X_modified.shape[1]
+            self.height = 1
+            self.width = 1
+        elif len(self.X_modified.shape) == 3:
+            # Data is supposed to be a gray scale image, or layers of structured data like
+            self.batch_size = self.X_modified.shape[0]
+            self.in_channels = 1
+            self.height = self.X_modified.shape[1]
+            self.width = self.X_modified.shape[2]
+            self.X_modified = np.expand_dims(self.X_modified, axis=1)
+        elif len(self.X_modified.shape) == 4:
+            # Data is supposed to be rgb images like
+            self.batch_size = self.X_modified.shape[0]
+            self.in_channels = self.X_modified.shape[1]
+            self.height = self.X_modified.shape[2]
+            self.width = self.X_modified.shape[3]
+
+        self.output_size = self.Y_modified.shape[-1]
+        
+        if display:
+            print("> batch_size, in_channels, height, width, output_size:")
+            print("\t", self.batch_size, "\t" , self.in_channels, "\t", self.height, "\t", self.width, "\t", self.output_size)
+
+        return self.batch_size, self.in_channels, self.height, self.width, self.output_size
+            

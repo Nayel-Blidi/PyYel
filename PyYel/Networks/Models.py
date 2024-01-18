@@ -3,7 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
+__all__ = ["CNNx2", "CNNx3",
+           "ConnectedNNx3", "ConnectedNNx5"]
 
 def _flat_features_size(x) -> int:
     """
@@ -53,7 +54,7 @@ class CNNx2(nn.Module):
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=filters, kernel_size=3, padding=1, stride=1)
         self.conv2 = nn.Conv2d(in_channels=filters, out_channels=4*filters, kernel_size=3, padding=1, stride=1)
 
-        self.linear1 = nn.Linear(_flat_features_size(torch.ones(in_channels, filters, input_size, input_size)), self.hidden_layers)
+        self.linear1 = nn.Linear(_flat_features_size(torch.ones(in_channels, 4*filters, input_size//2, input_size//2)), self.hidden_layers)
         self.linear2 = nn.Linear(self.hidden_layers, out_features=output_size)
 
     def forward(self, x):
@@ -93,7 +94,7 @@ class CNNx3(nn.Module):
         output_size: number of labels, must be equal to the length of the one hot encoded target vector.
     """
 
-    def __init__(self, in_channels=1, filters=16, hidden_layers=128, output_size=10, input_size=32, **kwargs):
+    def __init__(self, in_channels=1, filters=16, hidden_layers=128, output_size=10, input_size=32, p=0.05, **kwargs):
         super(CNNx3, self).__init__()
         
         self.in_channels = in_channels
@@ -106,14 +107,14 @@ class CNNx3(nn.Module):
         self.batchnorm1 = nn.BatchNorm2d(num_features=filters)
         self.batchnorm2 = nn.BatchNorm2d(num_features=4*filters)
         self.batchnorm3 = nn.BatchNorm2d(num_features=8*filters)
-        self.dropout = nn.Dropout(p=0.05)
+        self.dropout = nn.Dropout(p=p)
 
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=filters, kernel_size=3, padding=1, stride=1)
         self.conv2 = nn.Conv2d(in_channels=filters, out_channels=4*filters, kernel_size=3, padding=1, stride=1)
         self.conv3 = nn.Conv2d(in_channels=4*filters, out_channels=8*filters, kernel_size=3, padding=1, stride=1)
 
-        self.linear1 = nn.Linear(_flat_features_size(torch.ones(in_channels, filters, input_size, input_size)), self.hidden_layers)
-        self.linear1 = nn.Linear(self.hidden_layers, self.hidden_layers)
+        self.linear1 = nn.Linear(_flat_features_size(torch.ones(in_channels, 8*filters, input_size//4, input_size//4)), self.hidden_layers)
+        # self.linear1 = nn.Linear(self.hidden_layers, self.hidden_layers)
         # self.linear2 = nn.Linear(self.hidden_layers, self.hidden_layers//4)
         self.linear3 = nn.Linear(self.hidden_layers, out_features=output_size)
 
