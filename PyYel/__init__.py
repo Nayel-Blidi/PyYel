@@ -3,7 +3,7 @@ PyYel packages initializer
 """
 
 from . import Data, Networks
-from .Data import Augmentations, Datapoint, Utils
+from .Data import Augmentation, Datapoint, Utils
 from .Networks import Compiler, Models
 
 

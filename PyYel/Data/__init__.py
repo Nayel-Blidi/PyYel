@@ -2,4 +2,4 @@
 Data module initializer
 """
 
-from . import Datapoint, Augmentations, Utils
+from . import Augmentation, Datapoint, Utils

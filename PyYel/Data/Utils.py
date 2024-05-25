@@ -1,5 +1,5 @@
 # PyYel libraries
-from .Augmentations import ImageAugmentation
+from .Augmentation import ImageAugmentation
 from ..constants import * 
 from .guis.AugmentationsGUI import ConfigApp
 from .Datapoint import YelDatapoint, YelDataset, Datatensor
@@ -36,7 +36,7 @@ class Funcs():
     def __init__(self) -> None:
         None
 
-    def empty_folder_content(folder_path, extensions=['.png', '.txt']):
+    def empty_folder_content(self, folder_path, extensions=['.png', '.txt']):
         c=0
         for root, dirs, files in os.walk(folder_path):
             print(f"Deleting files from {folder_path}.")
