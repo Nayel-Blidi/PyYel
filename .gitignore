@@ -163,5 +163,7 @@ cython_debug/
 *.jpg
 *.txt
 *.egg-info/
+*.wiki/
+*.env/
 _input_test
 _output_test
