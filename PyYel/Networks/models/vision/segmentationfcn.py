@@ -51,7 +51,6 @@ class SegmentationFCN(ModelsAbstract):
         """
         Args
         ----
-        - conn: a SQL (sqlite3) connection object, that links the classes to the database
         - name: the name (without the .pth extension) of the model to load/save under the ``/weights/`` folder
         - version: the version of the model
             - To load a FCNResNet50 architecture, choose ``version="ResNet50"``
