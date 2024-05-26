@@ -11,18 +11,20 @@ import sqlite3
 from tqdm import tqdm
 from PIL import Image
 import json
+import pandas as pd
 
 NETWORKS_DIR_PATH = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 if __name__ == "__main__":
     sys.path.append(os.path.dirname(NETWORKS_DIR_PATH))
 
-WEIGHTS_WORKING_PATH = os.path.join(NETWORKS_DIR_PATH, "models", "torchvision", "weights")
-WEIGHTS_LEGACY_PATH = os.path.join(NETWORKS_DIR_PATH, "models", "torchvision", "weights_legacy")
+WEIGHTS_WORKING_PATH = os.path.join(NETWORKS_DIR_PATH, "models", "vision", "weights")
+WEIGHTS_LEGACY_PATH = os.path.join(NETWORKS_DIR_PATH, "models", "vision", "weights_legacy")
 
-from networks.models.modelsabstract import ModelsAbstract
-from networks.models.vision.datasets.resnetdataset import ResnetDataset
-from networks.scripts.sampler import Sampler
-from networks.models.vision.processing import datacompose, datatransforms, targetcompose, targettransforms
+# from networks.models.modelsabstract import ModelsAbstract
+from ..modelsabstract import ModelsAbstract
+from .datasets.resnetdataset import ResnetDataset
+from ...scripts.sampler import Sampler
+from .processing import datacompose, datatransforms, targetcompose, targettransforms
 
 class ClassificationResNet(ModelsAbstract):
     """
@@ -37,7 +39,7 @@ class ClassificationResNet(ModelsAbstract):
     - ResNet152 is the ``152`` version
     """
 
-    def __init__(self, name:str="", version="18", **kwargs) -> None:
+    def __init__(self, df:pd.DataFrame, name:str="", version="18", **kwargs) -> None:
         """
         Args
         ----
@@ -60,7 +62,7 @@ class ClassificationResNet(ModelsAbstract):
         else:
             raise ValueError("Invalid model version")
 
-        self.conn = conn
+        self.df = df
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         self.model = None                   # Will be replaced by the loaded/created model
@@ -143,25 +145,40 @@ class ClassificationResNet(ModelsAbstract):
         self.model.to(self.device)
         return self.model
     
-    def sample_batch(self, subdataset_name, data_transform="default", target_transform="default", test_size=0.25, **kwargs):
+    def sample_batch(self, data_transform="default", target_transform="default", test_size=0.25, **kwargs):
         """
-        Querries the SubDataset ``<subdataset_name>`` data from the server. Relevant labels are
-        automatically infered from the model in use and database architecture.
+        Querries the datapoints paths and labels from the dataframe. Relevant labels are
+        automatically infered from the model in use and dataframe structure.
 
         Args
         ---
-        - subdataset_name: the name of the SubDataset table to retreived the data from
+        - data_transform: the datapoints preprocessing pipeline to load. Can be overwritten by a custom Compose object.
+            - "default": default image processing and ResNet resizing
+            - torchvision.Compose: torchvision.Compose pipeline object
+            - datatransforms.Compose: custom PyYel processing.datatransforms.Compose pipeline object
+        - target_transform: the labels preprocessing pipeline to load. Can be overwritten by a custom Compose object.
+            - "default": default labels processing and ResNet resizing
+            - torchvision.Compose: torchvision.Compose pipeline object (not recommended)
+            - targettransforms.Compose: custom PyYel processing.datatransforms.Compose pipeline object
+        - test_size: the proportion of examples to allocate to the testing dataloader. Must be a value between 0 and 1.
+
+        Kwargs
+        ------
+        - chunks: int = 1,
+        - batch_size: int = None,
+        - drop_last: bool = True,
+        - num_workers: int = 0
         """
+
         self.assert_model(self.model)
 
-        sampler = Sampler(conn=self.conn, device=self.device)
+        sampler = Sampler(df=self.df, device=self.device)
 
         # Sampler outputs the datapoint path, as well as the corresponding labels rows from the DB
         # In the context of SSD, i.e. object detection, the output is as follows:
         # labels_list = [(datapoint_key, class_int, x_min, y_min, x_max, y_max, class_txt), ...]
-        datapoints_list, labels_list, unique_txt_classes = sampler.load_from_db(datapoints_type="Image_datapoints",
-                                                                                subdataset_name=subdataset_name,
-                                                                                labels_type="Image_classification")
+        datapoints_list, labels_list, unique_txt_classes = sampler.load_from_df(labels_type="Image_classification")
+
         # If a label_encoder wasn't loaded, a new one is created
         if not self.label_encoder:
             self.label_encoder = {}
@@ -183,8 +200,6 @@ class ClassificationResNet(ModelsAbstract):
         else:
             self.data_transform = data_transform
             self.target_transform = target_transform
-
-        labels_list = [array[:, -1:] for array in labels_list] # [..., class_txt]
 
         # The Sampler objects are overwritten with the list of dictionnaries
         sampler.split_in_two(datapoints_list=datapoints_list, labels_list=labels_list, test_size=test_size)
@@ -286,7 +301,7 @@ class ClassificationResNet(ModelsAbstract):
     
         return train_labels, train_predicted, losses_list
 
-    def test_model(self):
+    def test_model(self, output_folder:str=None):
         """
         Test the real accuracy on the testing batches from the testing dataloader 
 
@@ -304,9 +319,11 @@ class ClassificationResNet(ModelsAbstract):
                 
                 test_labels = test_labels.numpy().tolist()
                 test_predicted = self.model(test_features.to(self.device)).cpu().numpy()
-
-                self.plot_image(image=test_features[-1].numpy(), output=test_predicted[-1][np.argsort(test_predicted[-1])][::-1],
-                                labels=np.argsort(test_labels[-1])[::-1], label_encoder=self.label_encoder, filename=idx)
+                
+                if output_folder:
+                    self.plot_image(image=test_features[-1].numpy(), output=test_predicted[-1][np.argsort(test_predicted[-1])][::-1],
+                                    labels=np.argsort(test_labels[-1])[::-1], label_encoder=self.label_encoder, 
+                                    filename=os.path.join(output_folder, f"{idx}.png"))
 
                 test_success = np.sum(np.equal(np.argmax(test_predicted, axis=1), np.argmax(test_labels, axis=1)))
                 print(f"Testing Acc@1 accuracy: {test_success/len(test_predicted):.4f}")
@@ -355,17 +372,14 @@ class ClassificationResNet(ModelsAbstract):
             json.dump(self.label_encoder, json_file)
 
         return None
+    
 
 
 if __name__ == "__main__":
 
-    from database.scripts.connection import ConnectionSQLite
     from PIL import Image
     
-    coo = ConnectionSQLite()
-    conn = coo.connect_database()
-
-    model = ClassificationResNet(conn=conn, name="BreastCancer_backbone_v2", version="50")
+    model = ClassificationResNet(name="BreastCancer_backbone_v2", version="50")
     model.load_model()
     model.sample_batch(subdataset_name="BreastCancer", test_size=0.50, batch_size=100)
     # _, _, losses_list = model.train_model(num_epochs=100, backbone_retraining=True, lr=0.001)

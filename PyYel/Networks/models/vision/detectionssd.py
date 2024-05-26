@@ -18,6 +18,7 @@ from PIL import Image
 import json
 import cv2
 import multiprocessing as mp
+import pandas as pd
 
 NETWORKS_DIR_PATH = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 if __name__ == "__main__":
@@ -47,10 +48,11 @@ class DetectionSSD(ModelsAbstract):
     - SSD512 ins't provided but can be loaded from custom ``weights`` as the <512> ``version`` 
     """
 
-    def __init__(self, name:str=None, version="300", **kwargs) -> None:
+    def __init__(self, df:pd.DataFrame, name:str=None, version="300", **kwargs) -> None:
         """
         Args
         ----
+        - df: the pandas dataframe (csv file) featuring the datapoints paths and its associated labels
         - name: the name (without the .pth extension) of the model to load/save under the ``/weights/`` folder
         - version: the version of the model to load
             - To load the SSD300 architecture, choose ``version="300"``
@@ -67,7 +69,7 @@ class DetectionSSD(ModelsAbstract):
         else:
             raise ValueError("Invalid model version")
 
-        self.conn = conn
+        self.df = df
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         self.model = None                   # Will be replaced by the loaded/created model
@@ -128,21 +130,29 @@ class DetectionSSD(ModelsAbstract):
         return self.model
     
 
-    def sample_batch(self, subdataset_name, data_transform="default", target_transform="default", test_size=0.25, **kwargs):
+    def sample_batch(self, data_transform="default", target_transform="default", test_size=0.25, **kwargs):
         """
-        Querries the SubDataset ``<subdataset_name>`` data from the server. Relevant labels are
-        automatically infered from the model in use and database architecture.
+        Querries the datapoints paths and labels from the dataframe. Relevant labels are
+        automatically infered from the model in use and dataframe structure.
 
         Args
         ---
-        - subdataset_name: the name of the SubDataset table to retreived the data from
-        - transform: a ``torchvision.transforms.Compose`` object, that specifies the pipeline of preprocess to apply
-        to the batch of data. If ``None`` is given, then the data is only converted to tensor and reshaped to fit
-        the model inputs expectations. 
-        - label_encoder: a sklearn.preprocessing.LabelEncoder object, that attributes an integer target to a text class.
-        If ``None`` is provided, a new encoding is applied. If the data nor the model underwent no change, then the encoding will
-        stay identical to the previously encoded object. Otherwise, it might differ, which will require a slightly longer training
-        but shouldn't degrade the overall results when using frozen pre-trained weights.
+        - data_transform: the datapoints preprocessing pipeline to load. Can be overwritten by a custom Compose object.
+            - "default": default image processing and SSD resizing
+            - torchvision.Compose: torchvision.Compose pipeline object
+            - datatransforms.Compose: custom PyYel processing.datatransforms.Compose pipeline object
+        - target_transform: the labels preprocessing pipeline to load. Can be overwritten by a custom Compose object.
+            - "default": default labels processing and SSD resizing
+            - torchvision.Compose: torchvision.Compose pipeline object (not recommended)
+            - targettransforms.Compose: custom PyYel processing.datatransforms.Compose pipeline object
+        - test_size: the proportion of examples to allocate to the testing dataloader. Must be a value between 0 and 1.
+
+        Kwargs
+        ------
+        - chunks: int = 1,
+        - batch_size: int = None,
+        - drop_last: bool = True,
+        - num_workers: int = 0
         """
 
         size = (300, 300)
@@ -169,14 +179,12 @@ class DetectionSSD(ModelsAbstract):
             self.data_transform = data_transform
             self.target_transform = target_transform
 
-        sampler = Sampler(conn=self.conn, device=self.device)
+        sampler = Sampler(df=self.df, device=self.device)
 
         # Sampler outputs the datapoint path, as well as the corresponding labels rows from the DB
         # In the context of SSD, i.e. object detection, the output is as follows:
         # labels_list = [(datapoint_key, class_int, x_min, y_min, x_max, y_max, class_txt), ...]
-        datapoints_list, labels_list, unique_txt_classes = sampler.load_from_db(datapoints_type="Image_datapoints",
-                                                                                subdataset_name=subdataset_name,
-                                                                                labels_type="Image_detection")
+        datapoints_list, labels_list, unique_txt_classes = sampler.load_from_df(labels_type="Image_detection")
 
         # The labels are a list of tuples, where each tuple represents a box and its label
         # So it has to be regrouped as a list of subarrays, where one array represents all

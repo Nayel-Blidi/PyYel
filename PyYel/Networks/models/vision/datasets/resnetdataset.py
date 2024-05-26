@@ -29,7 +29,7 @@ class ResnetDataset(Dataset):
         # In the case of segmentation for instance, the mask (which is an image) would likely be 
         # loaded during the __getitem__ process due to memory limitations
         if self.target_transform:
-            self.labels_list = [self.target_transform(target) for target in self.labels_list]
+            self.labels_list = [self.target_transform(target.reshape(1, -1)) for target in self.labels_list]
         else:
             self.labels_list = [torch.Tensor(target) for target in self.labels_list]
 
