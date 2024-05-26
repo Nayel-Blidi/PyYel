@@ -16,10 +16,6 @@ PRELABELLING_DIR_PATH = os.path.dirname(os.path.dirname(__file__))
 if __name__ == "__main__":
     sys.path.append(os.path.dirname(PRELABELLING_DIR_PATH))
 
-from database.scripts.connection import ConnectionSQLite
-from database.scripts.requestdata import RequestData
-
-from prelabelling.models.torchvision.datasets.resnetdataset import ResnetDataset
 
 class Sampler():
     """
@@ -27,19 +23,18 @@ class Sampler():
     specified during the Active Learning loop.
     """
 
-    def __init__(self, conn:sqlite3.Connection, device:str="cpu") -> None:
+    def __init__(self, df:pd.DataFrame, device:str="cpu") -> None:
         """        
         Args
         ----
-        - conn: a SQL (sqlite3) connection object, that links the classes to the database
-        - device: the device to send the data to (default is ``<cpu>``)
+        - df: the pandas dataframe (csv file) featuring the datapoints paths and its associated labels
+        - device: the device to send the data to (default is ``"cpu"``)
         """    
-        self.conn = conn
+        self.df = df
         self.device = device
-        self.request = RequestData(conn=self.conn)
 
 
-    def load_from_db(self, datapoints_type:str, subdataset_name:str, labels_type:str):
+    def load_from_df(self, labels_type:str):
         """
         Loads the datapoints paths and labels related to a subdatset saved on the database.
 
@@ -68,34 +63,23 @@ class Sampler():
         """
 
         if labels_type == "Image_classification":
-            labels = "class, class_txt"
+            labels = "class_txt"
+            shape = (len(self.df), 1)
         elif labels_type == "Image_detection":
-            labels = "class, x_min, y_min, x_max, y_max, class_txt"
+            labels = "x_min, y_min, x_max, y_max, class_txt"
+            shape = (len(self.df), 5)
         elif labels_type == "Image_segmentation":
             labels = "label_path, class_txt"
+            shape = (len(self.df), 2)
         else:
-            raise ValueError(f"Task {labels_type} not supported")
+            raise ValueError(f"Task {labels_type} is not supported")
 
-        datapoints_keys = self.request.select_keys_from_subdataset(subdataset_name=subdataset_name)
-        self.datapoints_list = self.request.select_paths_from_keys(datapoints_keys=datapoints_keys, 
-                                                                   datapoints_type=datapoints_type)
-        self.labels_list = self.request.select_labels_from_keys(datapoints_keys=datapoints_keys, 
-                                                                labels_type=labels_type, 
-                                                                labels=labels)
+        self.datapoints_list = self.df["datapoint"].to_numpy()
+        self.labels_list = self.df[labels].to_numpy()
+        self.labels_list = self.labels_list.reshape(shape)
 
         # The classes as text are required to edit a label_encoder if required by the model
-        unique_txt_classes = list(set([row[-1] for row in self.labels_list]))
-
-        # The datapoints and labels rows are grouped into a dictionnary by sorted keys, so it ensures the connection between a datapoints and its label(s)
-        self.datapoints_list = {id: [tup[1:] for tup in self.datapoints_list if tup[0] == id] for id in set(tup[0] for tup in self.datapoints_list)}
-        self.datapoints_list = {k: self.datapoints_list[k] for k in sorted(self.datapoints_list.keys())}
-
-        self.labels_list = {id: [tup[1:] for tup in self.labels_list if tup[0] == id] for id in set(tup[0] for tup in self.labels_list)}
-        self.labels_list = {k: self.labels_list[k] for k in sorted(self.labels_list.keys())}
-        
-        # The dictionnaries are converted into list of str (datapoint_path) and list of arrays (labels)
-        self.datapoints_list = [tup[0][0] for tup in self.datapoints_list.values()] # list of singleton to list of elements
-        self.labels_list = list({key: np.array(list_of_tuples, dtype=object) for key, list_of_tuples in self.labels_list.items()}.values())
+        unique_txt_classes = list(set(self.df["class_txt"].to_list()))
 
         return self.datapoints_list, self.labels_list, unique_txt_classes
 
@@ -112,12 +96,13 @@ class Sampler():
         - datapoints_list: the list of paths as described in the ``<from_DB>`` method 
         - labels_list: the list of label tuples as described in the ``<from_DB>`` method 
         """
-        if datapoints_list:
+        if datapoints_list is not None:
             self.datapoints_list = datapoints_list
-        if labels_list:
+        if labels_list is not None:
             self.labels_list = labels_list
 
         self.X_train, self.X_test, self.Y_train, self.Y_test = train_test_split(self.datapoints_list, self.labels_list, test_size=test_size)
+        
         return self.X_train, self.X_test, self.Y_train, self.Y_test
 
 
