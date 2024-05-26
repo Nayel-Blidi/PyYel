@@ -37,6 +37,9 @@ class ModelsAbstract(ABC):
     def save_model(self):
         pass
 
+    def __dir__(self):
+        return ['load_model', 'sample_batch', 'train_model', 'test_model', 'save_model', 'evaluate_datapoint']
+    
     def assert_model(self, model):
         """
         Asserts a deep learning model has been loaded 
@@ -165,7 +168,7 @@ class ModelsAbstract(ABC):
 
         plt.imshow(image)
         plt.title(title)
-        plt.savefig(os.path.join(os.path.dirname(NETWORKS_DIR_PATH), "outputs", f"{filename}.png")) 
+        plt.savefig(os.path.join(f"{filename}")) 
         plt.close('all')  
 
 
@@ -230,7 +233,8 @@ class ModelsAbstract(ABC):
             ax.text(xmin, ymin - 2, f'{class_name}', color='g')
 
         plt.axis('off')
-        # plt.savefig(os.path.join(os.path.dirname(NETWORKS_DIR_PATH), "outputs", f"{filename}.png")) 
-        # plt.close('all')
+        plt.savefig(filename) 
+        plt.close('all')
 
         return fig
+
