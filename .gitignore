@@ -166,3 +166,4 @@ cython_debug/
 *.env/
 _input_test
 _output_test
+pyyel_test.py
