@@ -164,6 +164,7 @@ cython_debug/
 *.egg-info/
 *.wiki/
 *.env/
+*.json
 _input_test
 _output_test
 pyyel_test.py
