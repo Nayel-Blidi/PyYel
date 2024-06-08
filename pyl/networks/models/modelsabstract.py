@@ -155,19 +155,15 @@ class ModelsAbstract(ABC):
         
         return top_boxes, top_scores, top_labels
 
-    def plot_image(self, filename:str, output, image:np.ndarray, labels:list, label_encoder:dict=None):
-
-        image = np.clip(image.transpose(1, 2, 0)*255 + 1 / 2, a_min=0, a_max=1)
+    def plot_image(self, filename:str, image:np.ndarray, label:int, label_encoder:dict):
+        
+        print(image.shape)
 
         if label_encoder:
             class_names = list(label_encoder.keys()) # reversed label encoder, to retreive text classes from int labels
-        
-        title = ""
-        for position, label in enumerate(labels):
-            title += f"{position+1}: {output[position]:.2f} {class_names[label]}, "
 
-        plt.imshow(image)
-        plt.title(title)
+        plt.imshow(np.clip(np.transpose(image, axes=(1, 2, 0)), a_min=0, a_max=1))
+        plt.title(class_names[label])
         plt.savefig(os.path.join(f"{filename}")) 
         plt.close('all')  
 

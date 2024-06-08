@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "PyYel"
+version = "0.0.10"
+description = "New build"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    { name="Nayel BLIDI", email="nayel.blidi@gmail.com" }
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "configparser",
+    "tk",
+    "opencv-python"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]

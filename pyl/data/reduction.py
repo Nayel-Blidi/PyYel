@@ -6,11 +6,10 @@ import numpy as np
 from sklearn.decomposition import PCA
 
 def parquetPCA(files_list, path="", n_components=10, itt_cap=None):
-    """
-    Takes a list of parquet files, reads it and redcues its size by applying a (vertical) PCA on each column.
+    """Takes a list of parquet files, reads it and redcues its size by applying a (vertical) PCA on each column.
     Returns a NumpPy array of dimmensions (len(files_list), *parquet.shape), i.e. creates a batch from the inputs list.
     
-    /!\ Be sure to import PCA from sklearn.decomposition (from sklearn.decomposition import PCA)
+    - Be sure to import PCA from sklearn.decomposition (from sklearn.decomposition import PCA)
     """
 
     # Initialization of the batch array

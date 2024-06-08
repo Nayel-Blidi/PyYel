@@ -197,6 +197,17 @@ class ClassificationResNet(ModelsAbstract):
                 targettransforms.OneHotEncode(num_classes=self.num_classes),
                 transforms.ToTensor()
             ])
+        if data_transform == "grayscale" or target_transform == "grayscale":
+            self.data_transform = datacompose.DataCompose([
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5], std=[0.225]),
+                transforms.Resize(size=(224, 224))
+            ])
+            self.target_transform = targetcompose.TargetCompose([
+                targettransforms.LabelEncode(label_encoder=self.label_encoder),
+                targettransforms.OneHotEncode(num_classes=self.num_classes),
+                transforms.ToTensor()
+            ])
         else:
             self.data_transform = data_transform
             self.target_transform = target_transform
@@ -212,7 +223,8 @@ class ClassificationResNet(ModelsAbstract):
     def train_model(self, 
               num_epochs:int=10,
               lr:float=0.001,
-              backbone_retraining=False
+              backbone_retraining=False,
+              in_channels:int=None
               ):
         """
         Retrains the loaded ResNet model on the previoulsly sampled batch.
@@ -250,6 +262,13 @@ class ClassificationResNet(ModelsAbstract):
                                           nn.Softmax(dim=1))
             # self.model.fc = nn.Sequential(nn.Linear(self.model.fc.in_features, self.num_classes))
             print("ClassificationResNet >> A new classifying head is retrained")
+
+        if in_channels:
+            self.model.conv1 = torch.nn.Conv2d(1, self.model.conv1.out_channels, kernel_size=self.model.conv1.kernel_size,
+                                        stride=self.model.conv1.stride, padding=self.model.conv1.padding, bias=self.model.conv1.bias is not None)
+            with torch.no_grad():
+                self.model.conv1.weight = torch.nn.Parameter(self.model.conv1.weight.sum(dim=1, keepdim=True))
+            print(f"ClassificationResNet >> ResNet input has been modified to {in_channels} channels")
 
         for param in self.model.fc.parameters():
             # Either way, the last layer is retrained, so a gradient is embedded in case the model actually resumes training
@@ -301,7 +320,7 @@ class ClassificationResNet(ModelsAbstract):
     
         return train_labels, train_predicted, losses_list
 
-    def test_model(self, output_folder:str=None):
+    def test_model(self, output_path:str=None, display=False):
         """
         Test the real accuracy on the testing batches from the testing dataloader 
 
@@ -314,21 +333,29 @@ class ClassificationResNet(ModelsAbstract):
 
         self.model.eval()
         self.model.to(self.device)
+        df = []
         with torch.no_grad():
             for idx, (test_features, test_labels) in enumerate(self.test_dataloader): # Tests real accuracy
                 
                 test_labels = test_labels.numpy().tolist()
                 test_predicted = self.model(test_features.to(self.device)).cpu().numpy()
+                test = list(zip(test_labels, test_predicted.tolist()))
+
+                for label, pred in test:
+                    df.append(pd.DataFrame([[np.argmax(label)] + pred], columns=["GT", *self.label_encoder.keys()]))
                 
-                if output_folder:
-                    self.plot_image(image=test_features[-1].numpy(), output=test_predicted[-1][np.argsort(test_predicted[-1])][::-1],
-                                    labels=np.argsort(test_labels[-1])[::-1], label_encoder=self.label_encoder, 
-                                    filename=os.path.join(output_folder, f"{idx}.png"))
+                if display:
+                    self.plot_image(filename=os.path.join(output_path, f"{idx}.png"),
+                                    image = test_features[-1, ...], label=np.argmax(test_predicted[-1, ...]),
+                                    label_encoder=self.label_encoder) 
 
                 test_success = np.sum(np.equal(np.argmax(test_predicted, axis=1), np.argmax(test_labels, axis=1)))
                 print(f"Testing Acc@1 accuracy: {test_success/len(test_predicted):.4f}")
 
-        return test_labels, test_predicted
+        df = pd.concat(df)
+        df.to_csv(os.path.join(output_path, "testing_results.csv"), index=False)
+
+        return df
 
     def evaluate_datapoint(self, input:Image.Image):
         """

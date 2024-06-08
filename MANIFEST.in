@@ -1,4 +1,0 @@
-include *.ini
-include PyYel/*.ini
-include PyYel/**/*.ini
-include PyYel/**/**/*.ini

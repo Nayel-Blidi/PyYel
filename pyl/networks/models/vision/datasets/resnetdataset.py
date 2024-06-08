@@ -39,7 +39,8 @@ class ResnetDataset(Dataset):
     def __getitem__(self, idx):
         
         path = self.datapoints_list[idx] 
-        image = Image.open(os.path.normpath(path)).convert('RGB')
+        image = Image.open(os.path.normpath(path))#.convert('RGB')
+        
         # The datapoints are loaded per batch, so they are augmented every epoch
         if self.data_transform:
             image = self.data_transform(image).float() / 255
