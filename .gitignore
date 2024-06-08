@@ -165,6 +165,7 @@ cython_debug/
 *.wiki/
 *.env/
 *.json
+LICENSE
 _input_test
 _output_test
 pyyel_test.py
