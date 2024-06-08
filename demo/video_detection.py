@@ -2,8 +2,8 @@
 import cv2
 import torch
 
-from pyl.networks.models.vision.detectionssd import DetectionSSD
-from pyl.networks.models.vision.detectionfasterrcnn import DetectionFasterRCNN
+from pyl.models.vision.detectionssd import DetectionSSD
+from pyl.models.vision.detectionfasterrcnn import DetectionFasterRCNN
 
 coco_labels = {
     1: "person", 2: "bicycle", 3: "car", 4: "motorcycle", 5: "airplane",
