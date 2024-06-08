@@ -20,22 +20,22 @@ import cv2
 import multiprocessing as mp
 import pandas as pd
 
-NETWORKS_DIR_PATH = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+NETWORKS_DIR_PATH = ""
 if __name__ == "__main__":
     sys.path.append(os.path.dirname(NETWORKS_DIR_PATH))
 
-WEIGHTS_WORKING_PATH = os.path.join(NETWORKS_DIR_PATH, "models", "torchvision", "weights")
-WEIGHTS_LEGACY_PATH = os.path.join(NETWORKS_DIR_PATH, "models", "torchvision", "weights_legacy")
+WEIGHTS_WORKING_PATH = os.path.join(NETWORKS_DIR_PATH, "temp")
+WEIGHTS_LEGACY_PATH = os.path.join(NETWORKS_DIR_PATH, "temp")
 
 try:
     mp.set_start_method('spawn')
 except:
     None
 
-from networks.models.modelsabstract import ModelsAbstract
-from networks.scripts.sampler import Sampler
-from networks.models.vision.datasets.fcndataset import FCNDataset
-from networks.models.vision.processing import datacompose, datatransforms, targetcompose, targettransforms
+from ..modelsabstract import ModelsAbstract
+from .datasets.fcndataset import FCNDataset
+from ..sampler import Sampler
+from .processing import datacompose, datatransforms, targetcompose, targettransforms
 
 class SegmentationFCN(ModelsAbstract):
     """

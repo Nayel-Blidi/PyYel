@@ -13,17 +13,16 @@ from PIL import Image
 import json
 import pandas as pd
 
-NETWORKS_DIR_PATH = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+NETWORKS_DIR_PATH = ""
 if __name__ == "__main__":
     sys.path.append(os.path.dirname(NETWORKS_DIR_PATH))
 
-WEIGHTS_WORKING_PATH = os.path.join(NETWORKS_DIR_PATH, "models", "vision", "weights")
-WEIGHTS_LEGACY_PATH = os.path.join(NETWORKS_DIR_PATH, "models", "vision", "weights_legacy")
+WEIGHTS_WORKING_PATH = os.path.join(NETWORKS_DIR_PATH, "temp")
+WEIGHTS_LEGACY_PATH = os.path.join(NETWORKS_DIR_PATH, "temp")
 
-# from networks.models.modelsabstract import ModelsAbstract
 from ..modelsabstract import ModelsAbstract
 from .datasets.resnetdataset import ResnetDataset
-from ...scripts.sampler import Sampler
+from ..sampler import Sampler
 from .processing import datacompose, datatransforms, targetcompose, targettransforms
 
 class ClassificationResNet(ModelsAbstract):
@@ -39,7 +38,7 @@ class ClassificationResNet(ModelsAbstract):
     - ResNet152 is the ``152`` version
     """
 
-    def __init__(self, df:pd.DataFrame, name:str="", version="18", **kwargs) -> None:
+    def __init__(self, df:pd.DataFrame, name:str=None, version="18", **kwargs) -> None:
         """
         Args
         ----
@@ -178,6 +177,10 @@ class ClassificationResNet(ModelsAbstract):
         # In the context of SSD, i.e. object detection, the output is as follows:
         # labels_list = [(datapoint_key, class_int, x_min, y_min, x_max, y_max, class_txt), ...]
         datapoints_list, labels_list, unique_txt_classes = sampler.load_from_df(labels_type="Image_classification")
+
+        datapoints_list = self.df["path"].tolist()
+        labels_list = self.df["class_txt"].tolist()
+        unique_txt_classes = pd.unique(labels_list)
 
         # If a label_encoder wasn't loaded, a new one is created
         if not self.label_encoder:

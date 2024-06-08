@@ -7,7 +7,7 @@ import os
 from sklearn.metrics import average_precision_score, precision_recall_curve
 import shutil
 
-NETWORKS_DIR_PATH = os.path.dirname(os.path.dirname(__file__))
+NETWORKS_DIR_PATH = ""
 
 class ModelsAbstract(ABC):
     """
