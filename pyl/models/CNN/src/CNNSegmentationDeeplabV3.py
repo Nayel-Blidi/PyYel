@@ -32,11 +32,11 @@ try:
 except:
     None
 
-from networks.models.modelsabstract import ModelsAbstract
-from networks.scripts.sampler import Sampler
-from networks.models.vision.datasets.deeplabdataset import DeeplabV3Dataset
+from .CNN import CNN
+from .samplers.sampler import Sampler
+from .datasets.deeplabdataset import DeeplabV3Dataset
 
-class SegmentationDeeplabV3(ModelsAbstract):
+class CNNSegmentationDeeplabV3(CNN):
     """
     Class of method to labelize (segmentation) images using Deeplab V3 model.
     The model is based on the ``'Rethinking Atrous Convolution for Semantic Image Segmentation'`` paper, published in 2017.

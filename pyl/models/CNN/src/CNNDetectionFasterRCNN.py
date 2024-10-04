@@ -32,13 +32,13 @@ try:
 except:
     None
 
-from ..modelsabstract import ModelsAbstract
+from .CNN import CNN
 from .datasets.fasterrcnndataset import FasterRCNNDataset
-from ..sampler import Sampler
+from .samplers.sampler import Sampler
 from .processing import datacompose, datatransforms, targetcompose, targettransforms
 
 
-class DetectionFasterRCNN(ModelsAbstract):
+class CNNDetectionFasterRCNN(CNN):
     """
     Class of method to labelize (classification + boundary boxes detection) images using Faster R-CNN model.
     The model is based on the ``'Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks'`` paper, published in 2015.

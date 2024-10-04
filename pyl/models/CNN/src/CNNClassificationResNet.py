@@ -20,12 +20,12 @@ if __name__ == "__main__":
 WEIGHTS_WORKING_PATH = os.path.join(NETWORKS_DIR_PATH, "temp")
 WEIGHTS_LEGACY_PATH = os.path.join(NETWORKS_DIR_PATH, "temp")
 
-from ..modelsabstract import ModelsAbstract
+from .CNN import CNN
 from .datasets.resnetdataset import ResnetDataset
-from ..sampler import Sampler
+from .samplers.sampler import Sampler
 from .processing import datacompose, datatransforms, targetcompose, targettransforms
 
-class ClassificationResNet(ModelsAbstract):
+class CNNClassificationResNet(CNN):
     """
     Class of method to labelize (classification simple/multi) images using ResNet model.
     The model is based on the ``'Deep Residual Learning for Image Recognition'`` paper, published in 2015.
@@ -37,8 +37,7 @@ class ClassificationResNet(ModelsAbstract):
     - ResNet101 is the ``101`` version
     - ResNet152 is the ``152`` version
     """
-
-    def __init__(self, df:pd.DataFrame, name:str=None, version="18", **kwargs) -> None:
+    def __init__(self, model_name: str, weights_path: str = None) -> None:
         """
         Args
         ----
@@ -50,23 +49,37 @@ class ClassificationResNet(ModelsAbstract):
             - To load the ResNet101 architecture, choose ``version="101"``
             - To load the ResNet152 architecture, choose ``version="152"``
         """
+        super().__init__(model_name, weights_path)
 
-        if name:
-            self.name = name
-        else:
-            self.name = "default"
+    # def __init__(self, df:pd.DataFrame, name:str=None, version="18", **kwargs) -> None:
+    #     """
+    #     Args
+    #     ----
+    #     - name: the name (without the .pth extension) of the model saved under the ``/weights/`` folder
+    #     - version: the version of the model to load
+    #         - To load the ResNet18 architecture, choose ``version="18"``
+    #         - To load the ResNet34 architecture, choose ``version="34"``
+    #         - To load the ResNet50 architecture, choose ``version="50"``
+    #         - To load the ResNet101 architecture, choose ``version="101"``
+    #         - To load the ResNet152 architecture, choose ``version="152"``
+    #     """
 
-        if version in ["18", "34", "50", "101", "152"]:
-            self.version = version
-        else:
-            raise ValueError("Invalid model version")
+    #     if name:
+    #         self.name = name
+    #     else:
+    #         self.name = "default"
 
-        self.df = df
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+    #     if version in ["18", "34", "50", "101", "152"]:
+    #         self.version = version
+    #     else:
+    #         raise ValueError("Invalid model version")
 
-        self.model = None                   # Will be replaced by the loaded/created model
-        self.new_model = False              # If a model is loaded from /weights/, new_model=False
-        self.label_encoder:dict = None      # If a model is loaded from /weights/, label_encoder=...label_encoder.json
+    #     self.df = df
+    #     self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    #     self.model = None                   # Will be replaced by the loaded/created model
+    #     self.new_model = False              # If a model is loaded from /weights/, new_model=False
+    #     self.label_encoder:dict = None      # If a model is loaded from /weights/, label_encoder=...label_encoder.json
 
     def load_model(self):
         """

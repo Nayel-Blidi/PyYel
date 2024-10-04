@@ -32,12 +32,12 @@ try:
 except:
     None
 
-from ..modelsabstract import ModelsAbstract
+from .CNN import CNN
 from .datasets.ssddataset import SSDDataset
-from ..sampler import Sampler
+from .samplers.sampler import Sampler
 from .processing import datacompose, datatransforms, targetcompose, targettransforms
 
-class DetectionSSD(ModelsAbstract):
+class CNNDetectionSSD(CNN):
     """
     Class of method to labelize (classification + boundary boxes detection) images using SSD model.
     The model is based on the ``'SSD: Single Shot MultiBox Detector'`` paper, published in 2015.

@@ -32,12 +32,12 @@ try:
 except:
     None
 
-from ..modelsabstract import ModelsAbstract
+from .CNN import CNN
 from .datasets.fcndataset import FCNDataset
-from ..sampler import Sampler
+from .samplers.sampler import Sampler
 from .processing import datacompose, datatransforms, targetcompose, targettransforms
 
-class SegmentationFCN(ModelsAbstract):
+class CNNSegmentationFCN(CNN):
     """
     Class of method to segment images using FCN model.
     The model is based on the ``'Fully Convolutional Networks for Semantic Segmentation'`` paper, published in 2014.

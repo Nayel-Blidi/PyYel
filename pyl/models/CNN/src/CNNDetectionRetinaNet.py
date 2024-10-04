@@ -1,19 +1,11 @@
 
 
-from torchvision.models import SSD
+from .CNN import CNN
 
-class detectionSSD():
+class CNNDetectionRetinaNet(CNN):
     """
     Class of method to labelize (bbox detection + label) images using SSD model
     """
 
-    def __init__(self, image_list) -> None:
-        self.image_list = image_list
-
-    def train():
-        pass
-
-    def predict(image_list, display=False):
-        """
-        Detects objects on an image using the torch pretrained SSD weights
-        """
+    def __init__(self, model_name: str, weights_path: str = None) -> None:
+        super().__init__(model_name, weights_path)

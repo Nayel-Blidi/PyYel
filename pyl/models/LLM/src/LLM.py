@@ -60,7 +60,7 @@ class LLM(ABC):
         Initializes a model locally by loging to the HuggingFace API and creating a snapshot of its body.
         """
 
-        login(token=self.hf_token, add_to_git_credential=True)
+        login(token=self.hf_token)
 
         os.mkdir(path=self.model_folder)
         self._add_gitignore(folder_path=self.model_folder)
