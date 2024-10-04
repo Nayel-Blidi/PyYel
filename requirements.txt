@@ -1,8 +1,15 @@
-numpy
+numpy<2
 pandas
-torch
-torchvision
 opencv-python
+python-dotenv==1.0.1
 tqdm
 scikit-learn
 matplotlib
+
+transformers
+torch==2.4.1 #--index-url https://download.pytorch.org/whl/cu118
+torchvision
+datasets
+accelerate
+protobuf==5.28.2
+sentencepiece==0.2.0
