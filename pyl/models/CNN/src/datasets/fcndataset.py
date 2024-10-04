@@ -11,16 +11,13 @@ class FCNDataset(Dataset):
     methods to return Dataloader's objects.
     """
     def __init__(self, datapoints_list:list, labels_list:list, 
-                 data_transform:transforms.Compose=None, target_transform:transforms.Compose=None,
-                 device:str="cpu"):
+                 data_transform:transforms.Compose=None, target_transform:transforms.Compose=None):
         
         self.datapoints_list = datapoints_list
         self.labels_list = labels_list
 
         self.data_transform = data_transform
         self.target_transform = target_transform
-
-        self.device = device
     
     def __len__(self):
         return len(self.datapoints_list)
@@ -38,8 +35,8 @@ class FCNDataset(Dataset):
         else:
             image = torch.Tensor(image).float() / 255
 
-        path = self.labels_list[idx][0] # [(path1, class_txt1), (path2, class_txt2, ...)]
-        mask = Image.open(os.path.normpath(path)).convert("L")
+        path, class_txt = self.labels_list[idx] # [(path1, class_txt1), (path2, class_txt2, ...)]
+        mask = (Image.open(os.path.normpath(path)).convert("L"), class_txt)
         if self.target_transform:
             mask = self.target_transform(mask).long()
         else:
@@ -67,6 +64,6 @@ class FCNDataset(Dataset):
             masks.append(b[1])
 
         images = torch.stack(images, dim=0)
-        masks = torch.stack(masks, dim=0).squeeze(1) # crossentropy expects 3D inputs without in_challes dimension
+        masks = torch.stack(masks, dim=0).squeeze(1) # crossentropy expects 3D inputs without in_channels dimension
 
         return images, masks

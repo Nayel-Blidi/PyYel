@@ -4,15 +4,15 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
+import numpy as np
 
-class SSDDataset(Dataset):
+class FasterRCNNDataset(Dataset):
     """
-    A custom torch dataset dedicated to the SSD input format that overwrittes 
+    A custom torch dataset dedicated to the FasterRCNN input format that overwrittes 
     methods to return Dataloader's objects.
     """
     def __init__(self, datapoints_list:list, labels_list:list, 
-                 data_transform:transforms.Compose=None, target_transform:transforms.Compose=None,
-                 device:str="cpu"):
+                 data_transform:transforms.Compose=None, target_transform:transforms.Compose=None):
         
         self.datapoints_list = datapoints_list
         self.labels_list = labels_list
@@ -20,8 +20,6 @@ class SSDDataset(Dataset):
         self.data_transform = data_transform
         self.target_transform = target_transform
 
-        self.device = device
-    
         # The targets remain loaded, so they are augmented only once
         # In the case of segmentation for instance, the mask (which is an image) would likely be 
         # loaded during the __getitem__ process due to memory limitations
@@ -37,7 +35,7 @@ class SSDDataset(Dataset):
         """
         Loads the datapoint and its labels as arrays, and returns the tensors expected by the model
         """
-        
+
         path = self.datapoints_list[idx] 
         image = Image.open(os.path.normpath(path)).convert('RGB')
 
@@ -82,4 +80,5 @@ class SSDDataset(Dataset):
 
         images = torch.stack(images, dim=0)
 
-        return images, boxes, labels
+        return images, boxes, labels 
+

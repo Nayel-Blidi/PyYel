@@ -49,6 +49,30 @@ class StandardToYolo(CustomTransform):
         # TODO
         return target
     
+
+class ToTensor(CustomTransform):
+    def __init__(self, dtype=None):
+        """
+        Transforms a regular array into a tensor of same dtype
+
+        Args
+        ----
+        - dtype: the tensor dtype to transform the array into. If None, dtype is infered from array dtype
+        """
+        self.dtype = dtype
+
+    def __call__(self, target):
+        """
+        Takes an array and converts it into a ``torch.Tensor``
+        """
+
+        if self.dtype:
+            target = torch.tensor(data=target, dtype=self.dtype)
+        else:
+            target = torch.from_numpy(target)
+
+        return target
+    
 class BboxResize(CustomTransform):
     def __init__(self, x_coeff=1, y_coeff=1):
         """
@@ -73,6 +97,33 @@ class BboxResize(CustomTransform):
 
         return target
 
+
+class BboxTranspose(CustomTransform):
+    def __init__(self):
+        """
+        - order: the order to exchange the columns into.  
+
+        >>> target = [x_min, y_min, x_max, y_max, label]
+        >>> target = BboxTranspose()(target)
+        >>> target = [x_max, y_max, x_min, y_min, label] 
+        """
+
+    def __call__(self, target):
+        """
+        Takes a target array of shape [N, 5] and returns it with its boundary box transposed.
+
+        The expected target array is of format [x_min, y_min, x_max, y_max, label] 
+        """
+        
+        for idx, box in enumerate(target[0]):
+            # [y_min, x_min, x_min, y_min, label] = [x_min, y_min, x_max, y_max, label]
+            target[..., idx, -5] = box[-4]
+            target[..., idx, -4] = box[-5]
+            target[..., idx, -3] = box[-2]
+            target[..., idx, -2] = box[-3]
+
+        return target
+
 class LabelEncode(CustomTransform):
     def __init__(self, label_encoder, column=-1):
         """
@@ -89,10 +140,31 @@ class LabelEncode(CustomTransform):
         The expected target array is of format [..., label:str, ...] 
         """
 
-        for row_idx, row in enumerate(target):
-            target[row_idx, self.column] = self.label_encoder[row[self.column]]
+        for idx, label in enumerate(target):
+            target[idx] = int(self.label_encoder[label])
 
-        return target.astype(np.float32)
+        return target
+
+
+class MaskEncode(CustomTransform):
+    def __init__(self, label_encoder, column=-1):
+        """
+        - label_encoder is the dictionnary to use to assign the mask pixel values 
+        - label is the class_txt (str) to encode into a pixel value (int)
+        - column is for a 2D target array the column featuring the classes to encode of format [..., label:str, ...]  
+        """
+        self.label_encoder = label_encoder
+        self.column = column
+
+    def __call__(self, target:np.ndarray):
+        """
+        Takes a segmentation target (mask, class_txt) and returns the encoded mask 
+        """
+        
+        mask, class_txt = target
+        mask[mask != 0] = self.label_encoder[class_txt]
+
+        return mask
 
 class OneHotEncode(CustomTransform):
     def __init__(self, num_classes, column=-1):
@@ -110,9 +182,13 @@ class OneHotEncode(CustomTransform):
         The expected target array is of format [label:int] 
         """
 
-        if len(target[:, self.column]) >= 2:
-            target = np.any(np.squeeze(np.eye(self.num_classes)[target.astype(int)]), axis=0).astype(int)
-        else:
-            target = np.expand_dims(np.squeeze(np.eye(self.num_classes)[target.astype(int)]), axis=0).astype(int) 
+        # Create a one-hot encoded matrix
+        one_hot_matrix = np.zeros((self.num_classes), dtype=int)
+        one_hot_matrix[target] = 1
 
-        return target.reshape((1, self.num_classes))
+        # if len(target[:, self.column]) >= 2:
+        #     target = np.any(np.squeeze(np.eye(self.num_classes)[target.astype(int)]), axis=0).astype(int)
+        # else:
+        #     target = np.expand_dims(np.squeeze(np.eye(self.num_classes)[target.astype(int)]), axis=0).astype(int) 
+
+        return one_hot_matrix
