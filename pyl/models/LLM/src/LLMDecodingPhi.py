@@ -36,7 +36,7 @@ class LLMDecodingPhi(LLM):
         return None
 
 
-    def load_model(self, quantization: str = None, verbose: bool = False):
+    def load_model(self, quantization: str = None, display: bool = False):
         """
         Loads the Phi-3.5 Mini-Instruct model from the HuggingFace public weights 
         at 'microsoft/Phi-3.5-mini-instruct'.
@@ -76,7 +76,7 @@ class LLMDecodingPhi(LLM):
         self._dispatch_device(model=AutoModelForCausalLM.from_pretrained(self.model_folder, 
                                                                          trust_remote_code=True, 
                                                                          quantization_config=quantization_config),
-                              display=verbose)
+                              display=display)
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_folder, clean_up_tokenization_spaces=True)
 
@@ -95,7 +95,7 @@ class LLMDecodingPhi(LLM):
         pass
 
     
-    def evaluate_model(self, prompt: str, context: str = "", display: bool = False):
+    def evaluate_model(self, prompt: str, context: str = "", max_tokens: int = 1000, display: bool = False):
         """
         Evaluates a prompt and returns the model answer.
 
@@ -124,7 +124,7 @@ class LLMDecodingPhi(LLM):
             # model_kwargs={"quantization_config":quantization_config}
         )
         generation_args = {
-            "max_new_tokens": 1000,
+            "max_new_tokens": max_tokens,
             "return_full_text": False,
             # "temperature": 0.0,
             "do_sample": False,
