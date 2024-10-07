@@ -14,7 +14,7 @@ if __name__ == "__main__":
 from .LLM import LLM
 
 
-class LLMBARTLargeMNLI(LLM):
+class LLMEncodingBARTLargeMNLI(LLM):
     """
     An implementation of the HuggingFace facebook/bart-large-mnli transformer.
     """

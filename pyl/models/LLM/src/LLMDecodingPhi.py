@@ -80,6 +80,13 @@ class LLMDecodingPhi(LLM):
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_folder, clean_up_tokenization_spaces=True)
 
+        self.pipe = pipeline(
+            "text-generation",
+            model=self.model,
+            tokenizer=self.tokenizer,
+            device_map=self.device_map
+            )
+        
         return None
 
 
@@ -116,13 +123,7 @@ class LLMDecodingPhi(LLM):
         """
 
 
-        # Model settings
-        pipe = pipeline(
-            "text-generation",
-            model=self.model,
-            tokenizer=self.tokenizer,
-            # model_kwargs={"quantization_config":quantization_config}
-        )
+
         generation_args = {
             "max_new_tokens": max_tokens,
             "return_full_text": False,
@@ -133,7 +134,7 @@ class LLMDecodingPhi(LLM):
 
 
         messages = context + '\n' + prompt
-        output: str = pipe(messages, **generation_args)[0]["generated_text"]
+        output: str = self.pipe(messages, **generation_args)[0]["generated_text"]
         if display: print(output)
         
         return output

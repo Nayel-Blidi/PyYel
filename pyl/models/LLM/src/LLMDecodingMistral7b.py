@@ -114,7 +114,7 @@ class LLMDecodingMistral7b(LLM):
         output: str
             The model response.
         """
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(device="cuda")
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
 
         # Generate text
         print("LLMMistral7b >> Evaluating prompt.")

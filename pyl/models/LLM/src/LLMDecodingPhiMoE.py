@@ -37,7 +37,7 @@ class LLMDecodingPhiMoE(LLM):
         return None
 
 
-    def load_model(self):
+    def load_model(self, quantization: str = None, display: bool = False):
         """
         Loads the Phi-3.5 MoE model from the HuggingFace public weights at 'microsoft/Phi-3.5-moe'
 
@@ -56,36 +56,37 @@ class LLMDecodingPhiMoE(LLM):
         - Quantization in 4-bits requires roughly / of VRAM
         """
 
-        quantization_config = BitsAndBytesConfig(
-            load_in_8bit=True,
-            load_in_4bit=False,  # You can also set load_in_4bit=True if you want 4-bit quantization
-            llm_int8_threshold=32.0,  # Optional: Configure this for fine-tuning quantization
-            llm_int8_enable_fp32_cpu_offload=True,
-            bnb_4bit_compute_dtype=torch.float16
-        )
+        if quantization in ["8b", "4b"] and self.device != "cpu":
+            if quantization == "8b":
+                load_in_8bit = True
+                load_in_4bit = False
+            if quantization == "4b":
+                load_in_8bit = False
+                load_in_4bit = True
+            quantization_config = BitsAndBytesConfig(
+                load_in_8bit=load_in_8bit,
+                load_in_4bit=load_in_4bit,  
+                llm_int8_threshold=6.0,
+                llm_int8_enable_fp32_cpu_offload=True,
+                bnb_4bit_compute_dtype=torch.bfloat16
+            )
+        else:
+            quantization_config = None
 
-        with init_empty_weights():
-            model = AutoModelForCausalLM.from_pretrained("microsoft/Phi-3.5-MoE-instruct", 
-                                                         quantization_config=quantization_config,
-                                                         trust_remote_code=True)
-        # device_map = infer_auto_device_map(model, max_memory={0: "6GB", "cpu": "12GB"}, no_split_module_classes=["GPTNeoXLayer"])
+        self._dispatch_device(model=AutoModelForCausalLM.from_pretrained(self.model_folder, 
+                                                                         trust_remote_code=True, 
+                                                                         quantization_config=quantization_config),
+                              display=display)
 
-        self.model = AutoModelForCausalLM.from_pretrained(
-            "microsoft/Phi-3.5-MoE-instruct", 
-            trust_remote_code=True, 
-            quantization_config=quantization_config, 
-            # device_map=device_map
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_folder, clean_up_tokenization_spaces=True)
 
-        # self.model = AutoModelForCausalLM.from_pretrained(
-        #     "microsoft/Phi-3.5-MoE-instruct", 
-        #     device_map="cuda", 
-        #     torch_dtype="auto", 
-        #     trust_remote_code=True, 
-        # )
-
-        self.tokenizer = AutoTokenizer.from_pretrained("microsoft/Phi-3.5-MoE-instruct")
-
+        self.pipe = pipeline(
+            "text-generation",
+            model=self.model,
+            tokenizer=self.tokenizer,
+            device_map=self.device_map
+            )
+        
         return None
 
 

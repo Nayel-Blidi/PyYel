@@ -153,6 +153,7 @@ class LLM(ABC):
         else:
             if display: print("LLM >> Model sent to CPU mapped as:", f"cpu:{round(psutil.virtual_memory().total / (1024 ** 3), ndigits=0)}GB")
             self.device = "cpu"
+            self.device_map = None
 
         return True
 
@@ -171,7 +172,7 @@ class LLM(ABC):
         """
 
         self._map_device(display=display)
-        if self.device_memory:
+        if torch.cuda.is_available() :
             self.device_map = infer_auto_device_map(model)
             self.model = dispatch_model(model, self.device_map)
         else:
