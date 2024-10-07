@@ -139,7 +139,7 @@ class LLM(ABC):
                 gpu_name = torch.cuda.get_device_name(gpu_id)
                 gpu_memory = round(torch.cuda.get_device_properties(gpu_id).total_memory / (1024 ** 3), ndigits=0)
                 gpus_memory += gpu_memory
-                if display: print("LLM >> GPU ID, GPU name, GPU VRAM:", gpu_id, gpu_name, gpu_memory)
+                if display: print("LLM >> GPU ID:", gpu_id, "| GPU name:", gpu_name, "| GPU VRAM:", gpu_id)
 
                 # Device mapping, accelerate library max_memory format
                 self.device_memory[gpu_id] = f"{gpu_memory}GB" 
@@ -151,7 +151,7 @@ class LLM(ABC):
             if display: print("LLM >> Model sent to GPUs mapped as:", self.device_memory)
 
         else:
-            if display: print("LLM >> Model sent to CPU mapped as:", f"cpu:{round(psutil.virtual_memory().total / (1024 ** 3), ndigits=1)}GB")
+            if display: print("LLM >> Model sent to CPU mapped as:", f"cpu:{round(psutil.virtual_memory().total / (1024 ** 3), ndigits=0)}GB")
             self.device = "cpu"
 
         return True
