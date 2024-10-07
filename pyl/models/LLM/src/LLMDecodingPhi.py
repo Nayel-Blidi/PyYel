@@ -56,36 +56,48 @@ class LLMDecodingPhi(LLM):
         - Quantization in 4-bits requires roughly 11Go of VRAM
         """
         
-        if quantization in ["8b", "4b"] and self.device != "cpu":
+        if quantization in ["8b", "4b"] and torch.cuda.is_available():
             if quantization == "8b":
                 load_in_8bit = True
                 load_in_4bit = False
+                dtype_correction = 2.0
             if quantization == "4b":
                 load_in_8bit = False
                 load_in_4bit = True
+                dtype_correction = 4.0
             quantization_config = BitsAndBytesConfig(
                 load_in_8bit=load_in_8bit,
-                load_in_4bit=load_in_4bit,  
+                load_in_4bit=load_in_4bit, 
                 llm_int8_threshold=6.0,
-                llm_int8_enable_fp32_cpu_offload=True,
-                bnb_4bit_compute_dtype=torch.bfloat16
-            )
+                llm_int8_enable_fp32_cpu_offload=True,)
+                # bnb_4bit_compute_dtype=torch.bfloat16)
+            low_cpu_mem_usage = True
         else:
+            low_cpu_mem_usage = None
             quantization_config = None
+            dtype_correction = 2.0
+        
+        with init_empty_weights(include_buffers=True):
+            empty_model = AutoModelForCausalLM.from_pretrained(self.model_folder, quantization_config=quantization_config)
+            self._device_map(model=empty_model, dtype_correction=dtype_correction, display=display)
+            del empty_model
 
-        self._dispatch_device(model=AutoModelForCausalLM.from_pretrained(self.model_folder, 
-                                                                         trust_remote_code=True, 
-                                                                         quantization_config=quantization_config),
-                              display=display)
-
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_folder, clean_up_tokenization_spaces=True)
-
-        self.pipe = pipeline(
-            "text-generation",
-            model=self.model,
-            tokenizer=self.tokenizer,
-            device_map=self.device_map
-            )
+        self.model = AutoModelForCausalLM.from_pretrained(self.model_folder, 
+                                                          trust_remote_code=True, 
+                                                          quantization_config=quantization_config, 
+                                                          low_cpu_mem_usage=low_cpu_mem_usage,
+                                                          device_map=self.device_map,
+                                                        #   attn_implementation="flash_attention_2",
+                                                          torch_dtype=torch.bfloat16)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_folder, 
+                                                       clean_up_tokenization_spaces=True)
+        self.pipe = pipeline("text-generation",
+                             model=self.model,
+                             tokenizer=self.tokenizer,
+                             torch_dtype=torch.bfloat16,
+                             device_map=self.device_map)
+        
+        if display: print(torch.cuda.memory_summary(device=torch.device('cuda')))
         
         return None
 
@@ -127,11 +139,10 @@ class LLMDecodingPhi(LLM):
         generation_args = {
             "max_new_tokens": max_tokens,
             "return_full_text": False,
-            # "temperature": 0.0,
-            "do_sample": False,
+            "temperature": 0.1,
+            "do_sample": True,
             # "stream":True
         }
-
 
         messages = context + '\n' + prompt
         output: str = self.pipe(messages, **generation_args)[0]["generated_text"]

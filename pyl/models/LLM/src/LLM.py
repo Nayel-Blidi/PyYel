@@ -110,7 +110,7 @@ class LLM(ABC):
         return True
     
 
-    def _map_device(self, display: bool = False):
+    def _device_map(self, model, dtype_correction: float = 1, display: bool = False):
         """
         Auto maps the device weights repartition across PC GPU/CPU.
 
@@ -118,6 +118,10 @@ class LLM(ABC):
         ----
         model_ram: float
             The RAM required by the weights to be loaded into the VRAM/RAM.
+        dtype_correction: float, 1.0
+            The accelerate library used expects float32 types. When using smaller types, the weights would be incorrectly
+            divided across the devices. To fix this, a coefficent can be added to the available VRAM count, to simulate 
+            smaller weights bit-wise.
         display: bool, False
             Whereas printing verbose or not, debug util. 
 
@@ -128,9 +132,8 @@ class LLM(ABC):
         - If you lack memory, try quantisizing the models for important performances improvements. Although may break some models or lead to more hallucinations.
         """
 
-        self.device_memory = {}
+        device_memory = {}
         if torch.cuda.is_available():
-            self.device = "cuda"
 
             gpus_memory = 0
             gpus = torch.cuda.device_count()
@@ -139,41 +142,52 @@ class LLM(ABC):
                 gpu_name = torch.cuda.get_device_name(gpu_id)
                 gpu_memory = round(torch.cuda.get_device_properties(gpu_id).total_memory / (1024 ** 3), ndigits=0)
                 gpus_memory += gpu_memory
-                if display: print("LLM >> GPU ID:", gpu_id, "| GPU name:", gpu_name, "| GPU VRAM:", gpu_id)
+                if display: print("LLM >> GPU ID:", gpu_id, "| GPU name:", gpu_name, "| GPU VRAM:", gpu_memory)
 
                 # Device mapping, accelerate library max_memory format
-                self.device_memory[gpu_id] = f"{gpu_memory}GB" 
+                device_memory[gpu_id] = f"{gpu_memory*dtype_correction}GB" 
 
             # If additionnal memory is needed, it will be allocated to CPU
             # self.device_memory["cpu"] = f"{max(model_ram - gpus_memory, 0)}GB"
-            self.device_memory["cpu"] = f"{round(psutil.virtual_memory().available / (1024 ** 3), ndigits=0)}GB"
+            # device_memory["npu"] = "8GB"
+            device_memory["cpu"] = f"{round(psutil.virtual_memory().available / (1024 ** 3), ndigits=0)}GB"
 
-            if display: print("LLM >> Model sent to GPUs mapped as:", self.device_memory)
+            if display and dtype_correction != 1.0: print(f"LLM >> Model memory corrected to simulate dtypes {dtype_correction} times",
+                                                          f"smaller bits-wise (VRAM multiplied by {dtype_correction}x)")
+            if display: print("LLM >> Model sent to GPUs mapped as:", device_memory)
+
+            self.device = "cuda" # to easily send small tensors to the GPU
+            # self.device_map = infer_auto_device_map(model=model, max_memory=device_memory, no_split_module_classes=["GPTNeoXLayer"], verbose=display)
+            self.device_map = infer_auto_device_map(model=model, max_memory=device_memory, verbose=display)
 
         else:
-            if display: print("LLM >> Model sent to CPU mapped as:", f"cpu:{round(psutil.virtual_memory().total / (1024 ** 3), ndigits=0)}GB")
-            self.device = "cpu"
+            if display: print("LLM >> Model sent to CPU mapped as:", f"cpu: {round(psutil.virtual_memory().total / (1024 ** 3), ndigits=0)}GB")
+            self.device = "cpu" # for compatibility when sending tensors to device
             self.device_map = None
 
         return True
 
 
-    def _dispatch_device(self, model, display: bool = False):
+    def _device_dispatch(self, model, dtype_correction: float = 1.0, display: bool = False):
         """
+        TODO: replace with torch.nn.module input and init_empty_weights for dispatching of CNN and FCN
         Takes a model and loads it across the available devices. Prioritizes GPUs first, in their natural 
         order (unless gpu:0 is the CPU chipset, which will be skipped).
 
         Args
         ----
         model: Any
-            The loaded model. Can be inialized with empty weights to improve performances, and only retreive the device_map. 
+            The loaded model. Can be inialized with empty weights to improve performances, and only retreive the device_map.
+        dtype_correction: float, 1.0
+            The accelerate library used expects float32 types. When using smaller types, the weights would be incorrectly
+            divided across the devices. To fix this, a coefficent can be added to the available VRAM count, to simulate 
+            smaller weights bit-wise.
         display: bool, False
             Whereas printing verbose or not, debug util. 
         """
 
-        self._map_device(display=display)
+        self._device_map(model=model, dtype_correction=dtype_correction, display=display)
         if torch.cuda.is_available() :
-            self.device_map = infer_auto_device_map(model)
             self.model = dispatch_model(model, self.device_map)
         else:
             self.model = model.to(self.device)

@@ -13,3 +13,5 @@ datasets
 accelerate
 protobuf==5.28.2
 sentencepiece==0.2.0
+wheel==0.44.0 # nedded to install bitsandbytes
+bitsandbytes==0.44.1 # for quantification

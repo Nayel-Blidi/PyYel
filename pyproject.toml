@@ -25,7 +25,8 @@ dependencies = [
     "datasets",
     "accelerate",
     "protobuf==5.28.2",
-    "sentencepiece==0.2.0"
+    "sentencepiece==0.2.0",
+    "bitsandbytes==0.44.1"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
