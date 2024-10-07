@@ -49,6 +49,9 @@ class LLMDecodingPhiMoE(LLM):
 
         Note
         ----
+        - Make sure you have a combinaison of devices that has enough RAM/VRAM to host the whole model. Extra weights will be sent to CPU RAM, that will
+        greatly reduce the computing speed, additionnal memory needs offloaded to scratch disk (default disk).
+        - If you lack memory, try quantisizing the models for important performances improvements. Although may break some models or lead to more hallucinations.
         - Quantization in 8-bits requires roughly / of VRAM
         - Quantization in 4-bits requires roughly / of VRAM
         """

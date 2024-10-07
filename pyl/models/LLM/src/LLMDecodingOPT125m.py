@@ -36,7 +36,7 @@ class LLMDecodingOPT125m(LLM):
         return None
 
 
-    def load_model(self, quantization: str = None):
+    def load_model(self, quantization: str = None, verbose: bool = False):
         """
         Loads the OPT-125M model from the HuggingFace public weights at 'facebook/opt-125m'.
 
@@ -48,6 +48,9 @@ class LLMDecodingOPT125m(LLM):
 
         Note
         ----
+        - Make sure you have a combinaison of devices that has enough RAM/VRAM to host the whole model. Extra weights will be sent to CPU RAM, that will
+        greatly reduce the computing speed, additionnal memory needs offloaded to scratch disk (default disk).
+        - If you lack memory, try quantisizing the models for important performances improvements. Although may break some models or lead to more hallucinations.
         - Quantization in 8-bits requires roughly / of VRAM
         - Quantization in 4-bits requires roughly / of VRAM
         """
@@ -66,23 +69,17 @@ class LLMDecodingOPT125m(LLM):
                 llm_int8_enable_fp32_cpu_offload=True,
                 bnb_4bit_compute_dtype=torch.bfloat16
             )
-            with init_empty_weights():
-                self.model = AutoModelForCausalLM.from_pretrained(self.model_folder, quantization_config=quantization_config)
-            # device_map = infer_auto_device_map(model, max_memory={0: "6GB", "cpu": "12GB"}, no_split_module_classes=["GPTNeoXLayer"])
         else:
             quantization_config = None
 
-
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_folder, 
-            trust_remote_code=True, 
-            quantization_config=quantization_config, 
-            # device_map=device_map
-        )
+        self._dispatch_device(model=AutoModelForCausalLM.from_pretrained(self.model_folder, 
+                                                                         trust_remote_code=True, 
+                                                                         quantization_config=quantization_config),
+                              display=verbose)
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_folder, clean_up_tokenization_spaces=True)
 
-        return None
+        return True
 
 
     def sample_model(self):
@@ -97,16 +94,24 @@ class LLMDecodingOPT125m(LLM):
         pass
 
     
-    def evaluate_model(self, prompt: str, log_content: str, display: bool = False):
+    def evaluate_model(self, prompt: str, max_tokens: int = 1000, context: str = "", display: bool = False):
         """
         Evaluates a prompt and returns the model answer.
 
         Args
         ----
         prompt: str
-            The model querry
+            The model querry.
+        context: str
+            Enhances a prompt by concatenating a string content beforehand. Default is '', adding the context
+            is equivalent to enhancing the prompt input directly.
         display: bool
-            Whereas printing the model answer or not. Default is 'True'
+            Whereas printing the model answer or not. Default is 'True'.
+
+        Returns
+        -------
+        output: str
+            The model response.
         """
 
         # Model settings
@@ -117,7 +122,7 @@ class LLMDecodingOPT125m(LLM):
             # model_kwargs={"quantization_config":quantization_config}
         )
         generation_args = {
-            "max_new_tokens": 1000,
+            "max_new_tokens": max_tokens,
             "return_full_text": False,
             # "temperature": 0.0,
             "do_sample": False,
@@ -125,12 +130,9 @@ class LLMDecodingOPT125m(LLM):
         }
 
         # Model enhanced prompting
-        messages = "You are a bot designed to assist a team that maintains virtual machines, and github CI/CD pipelines. You analyze logs and suggest causes that may have lead to such a log track." \
-                    + log_content \
-                    + prompt
-
+        messages = context + '\n' + prompt
         output: str = pipe(messages, **generation_args)[0]["generated_text"]
-        print(output)
+        if display: print(output)
         
         return output
 

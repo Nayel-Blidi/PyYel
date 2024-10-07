@@ -1,14 +1,13 @@
 
 import os, sys
 from abc import ABC, abstractmethod
-import json
 import shutil
-import numpy as np
-import pandas as pd
+import psutil
 
 import torch
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from accelerate import init_empty_weights, infer_auto_device_map, dispatch_model
 
 from huggingface_hub import login
 from huggingface_hub import snapshot_download
@@ -90,6 +89,79 @@ class LLM(ABC):
         gitignore_path = os.path.join(folder_path, '.gitignore')
         with open(gitignore_path, 'w') as gitignore_file:
             gitignore_file.write(gitignore_content)
+        
+        return True
+    
+
+    def _map_device(self, display: bool = False):
+        """
+        Auto maps the device weights repartition across PC GPU/CPU.
+
+        Args
+        ----
+        model_ram: float
+            The RAM required by the weights to be loaded into the VRAM/RAM.
+        display: bool, False
+            Whereas printing verbose or not, debug util. 
+
+        Note
+        ----
+        - Make sure you have a combinaison of devices that has enough RAM/VRAM to host the whole model. Extra weights will be sent to CPU RAM, that will
+        greatly reduce the computing speed, additionnal memory needs offloaded to scratch disk (default disk).
+        - If you lack memory, try quantisizing the models for important performances improvements. Although may break some models or lead to more hallucinations.
+        """
+
+        self.device_memory = {}
+        if torch.cuda.is_available():
+            self.device = "cuda"
+
+            gpus_memory = 0
+            gpus = torch.cuda.device_count()
+            for gpu_id in range(gpus):
+
+                gpu_name = torch.cuda.get_device_name(gpu_id)
+                gpu_memory = round(torch.cuda.get_device_properties(gpu_id).total_memory / (1024 ** 3), ndigits=0)
+                gpus_memory += gpu_memory
+                if display: print("LLM >> GPU ID, GPU name, GPU VRAM:", gpu_id, gpu_name, gpu_memory)
+
+                # Device mapping, accelerate library max_memory format
+                self.device_memory[gpu_id] = f"{gpu_memory}GB" 
+
+            # If additionnal memory is needed, it will be allocated to CPU
+            # self.device_memory["cpu"] = f"{max(model_ram - gpus_memory, 0)}GB"
+            self.device_memory["cpu"] = f"{round(psutil.virtual_memory().available / (1024 ** 3), ndigits=0)}GB"
+
+            if display: print("LLM >> Model sent to GPUs mapped as:", self.device_memory)
+
+        else:
+            if display: print("LLM >> Model sent to CPU mapped as:", f"cpu:{round(psutil.virtual_memory().total / (1024 ** 3), ndigits=1)}GB")
+            self.device = "cpu"
+
+        return True
+
+
+    def _dispatch_device(self, model, display: bool = False):
+        """
+        Takes a model and loads it across the available devices. Prioritizes GPUs first, in their natural 
+        order (unless gpu:0 is the CPU chipset, which will be skipped).
+
+        Args
+        ----
+        model: Any
+            The loaded model. Can be inialized with empty weights to improve performances, and only retreive the device_map. 
+        display: bool, False
+            Whereas printing verbose or not, debug util. 
+        """
+
+        self._map_device(display=display)
+        if self.device_memory:
+            self.device_map = infer_auto_device_map(model)
+            self.model = dispatch_model(model, self.device_map)
+        else:
+            self.model = model.to(self.device)
+
+        return True
+
 
 
     @abstractmethod
