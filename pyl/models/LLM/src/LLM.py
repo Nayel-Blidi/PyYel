@@ -64,7 +64,24 @@ class LLM(ABC):
         os.mkdir(path=self.model_folder)
         self._add_gitignore(folder_path=self.model_folder)
 
-        snapshot_download(repo_id=self.model_name, local_dir=self.model_folder)
+        allow_patterns = [
+            "pytorch_model.bin",        # PyTorch weights
+            "*.safetensors",            # Optional: If the model uses safetensors
+            "config.json",              # Model configuration
+            "tokenizer.json",           # Tokenizer files
+            "vocab.txt",                # Optional tokenizer vocab file
+            "merges.txt",               # For BPE tokenizers (e.g., GPT)
+            "special_tokens_map.json",  # Special tokens file (if any)
+            "tokenizer_config.json"     # Tokenizer configuration
+        ]
+        ignore_patterns = [
+            "tf_model.h5",              # TensorFlow weights
+            "flax_model.msgpack",        # JAX/Flax weights
+            "*.onnx",                    # Optional: Exclude ONNX files if present
+            "*.tflite",                  # Optional: Exclude TensorFlow Lite files
+        ]
+
+        snapshot_download(repo_id=self.model_name, local_dir=self.model_folder, ignore_patterns=ignore_patterns, allow_patterns=None)
 
         return True
 
