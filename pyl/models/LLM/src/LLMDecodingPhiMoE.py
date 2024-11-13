@@ -21,8 +21,8 @@ class LLMDecodingPhiMoE(LLM):
         """
         Initializes the model with ``'microsoft/Phi-3.5-moe'`` for text-to-text generation.
 
-        Args
-        ----
+        Parameters
+        ----------
         weights_path: str, None
             The path to the folder where the models weights should be saved. If None, the current working 
             directory path will be used instead.
@@ -41,8 +41,8 @@ class LLMDecodingPhiMoE(LLM):
         """
         Loads the Phi-3.5 MoE model from the HuggingFace public weights at 'microsoft/Phi-3.5-moe'
 
-        Args
-        ----
+        Parameters
+        ----------
         quantization: str, None
             Quantisizes a model to reduce its memory usage and improve speed. Quantization can only be done
             on GPU be in 4-bits (``quantization='4b'``) or 8-bits (``quantization='8b'``).  
@@ -106,8 +106,8 @@ class LLMDecodingPhiMoE(LLM):
         """
         Evaluates a prompt and returns the model answer.
 
-        Args
-        ----
+        Parameters
+        ----------
         prompt: str
             The model querry
         display: bool

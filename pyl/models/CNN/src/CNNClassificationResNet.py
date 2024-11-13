@@ -39,8 +39,8 @@ class CNNClassificationResNet(CNN):
     """
     def __init__(self, model_name: str, weights_path: str = None) -> None:
         """
-        Args
-        ----
+        Parameters
+        ----------
         - name: the name (without the .pth extension) of the model saved under the ``/weights/`` folder
         - version: the version of the model to load
             - To load the ResNet18 architecture, choose ``version="18"``
@@ -245,8 +245,8 @@ class CNNClassificationResNet(CNN):
         """
         Retrains the loaded ResNet model on the previoulsly sampled batch.
         
-        Args
-        ----
+        Parameters
+        ----------
         - num_classes: the number of classes to predict
         - num_epochs: the number of epochs to train on
         - lr: the learning rate
@@ -380,8 +380,8 @@ class CNNClassificationResNet(CNN):
         Keep in mind the output is the integer representing a class as learned by the model in use,
         and thus the corresponding "text" class may vary 
 
-        Args
-        ----
+        Parameters
+        ----------
         - image: PIL.Image object to evaluate.
 
         Eg:
@@ -402,8 +402,8 @@ class CNNClassificationResNet(CNN):
         If no name is specified, the previous weights will be replaced by the newly computed ones.
         If this is a new model, a default weights file will be created (might delete a previously unamed model).
 
-        Args
-        ----
+        Parameters
+        ----------
         name: the name to save the models' weights with. Extension (.pth) should not be mentionned. 
         """
 

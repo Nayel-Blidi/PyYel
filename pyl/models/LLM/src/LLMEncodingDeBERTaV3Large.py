@@ -23,8 +23,8 @@ class LLMEncodingDeBERTaV3Large(LLM):
         """
         Initializes the model with ``'MoritzLaurer/deberta-v3-large-zeroshot-v2.0'`` for zero-shot classification.
 
-        Args
-        ----
+        Parameters
+        ----------
         weights_path: str, None
             The path to the folder where the models weights should be saved. If None, the current working 
             directory path will be used instead.
@@ -44,8 +44,8 @@ class LLMEncodingDeBERTaV3Large(LLM):
         """
         Loads the MoritzLaurer/deberta-v3-large-zeroshot-v2.0 model for zero-shot classification.
 
-        Args
-        ----
+        Parameters
+        ----------
         task: str, 'zero-shot-classification'
             The task to use this encoder for. Default is zero-shoot-classification.
         
@@ -102,8 +102,8 @@ class LLMEncodingDeBERTaV3Large(LLM):
         """
         Classifies the prompts using zero-shot classification.
 
-        Args
-        ----
+        Parameters
+        ----------
             prompts: List[str]
                 The list of prompts to classify.
             candidate_labels: List[str] 
@@ -140,8 +140,8 @@ class LLMEncodingDeBERTaV3Large(LLM):
         """
         Postprocesses the pipeline output to make it directly readable.
 
-        Args
-        ----
+        Parameters
+        ----------
         results: list[dict]
             The pipeline outputs that will be cherry-picked to only return the predicted label or output.
         multi_label: bool

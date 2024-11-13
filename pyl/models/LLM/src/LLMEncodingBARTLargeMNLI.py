@@ -23,8 +23,8 @@ class LLMEncodingBARTLargeMNLI(LLM):
         """
         Initializes the model with ``'facebook/bart-large-mnli'`` for zero-shot classification.
 
-        Args
-        ----
+        Parameters
+        ----------
         weights_path: str, None
             The path to the folder where the models weights should be saved. If None, the current working 
             directory path will be used instead.
@@ -43,8 +43,8 @@ class LLMEncodingBARTLargeMNLI(LLM):
         """
         Loads the facebook/bart-large-mnli model for zero-shot classification.
 
-        Args
-        ----
+        Parameters
+        ----------
         task: str, 'zero-shot-classification'
             The task to use this encoder for. Default is zero-shoot-classification.
         
@@ -100,8 +100,8 @@ class LLMEncodingBARTLargeMNLI(LLM):
         """
         Classifies the prompt using zero-shot classification.
 
-        Args
-        ----
+        Parameters
+        ----------
             prompt: str
                 The prompt to classify.
             candidate_labels: list[str] 
@@ -146,8 +146,8 @@ class LLMEncodingBARTLargeMNLI(LLM):
         """
         Classifies the prompt using zero-shot classification.
 
-        Args
-        ----
+        Parameters
+        ----------
             prompt: str
                 The prompt to classify.
             candidate_labels: list[str] 
@@ -186,8 +186,8 @@ class LLMEncodingBARTLargeMNLI(LLM):
         """
         Postprocesses the pipeline output to make it directly readable.
         
-        Args
-        ----
+        Parameters
+        ----------
         results: list[dict]
             The pipeline outputs that will be cherry-picked to only return the predicted label or output.
         multi_label: bool

@@ -55,8 +55,8 @@ class CNNDetectionFasterRCNN(CNN):
 
     def __init__(self, df:pd.DataFrame, name:str=None, version="ResNet50v1", **kwargs) -> None:
         """
-        Args
-        ----
+        Parameters
+        ----------
         - df: the pandas dataframe (csv file) featuring the datapoints paths and its associated labels
         - name: the name (without the .pth extension) of the model to load/save under the ``/weights/`` folder
         - version: the version of the model to load
@@ -247,8 +247,8 @@ class CNNDetectionFasterRCNN(CNN):
         """
         Retrains the loaded FasterRCNN model on the previoulsly sampled batch.
         
-        Args
-        ----
+        Parameters
+        ----------
         - num_epochs: the number of epochs to train on
         - bbox_retraining: whereas to retrain the bbox regression head or not
         - backbone_retraining: whereas to retrain the backbone or not
@@ -438,8 +438,8 @@ class CNNDetectionFasterRCNN(CNN):
         If no name is specified, the previous weights will be replaced by the newly computed ones.
         If this is a new model, a default weights file will be created (might delete a previously unamed model).
 
-        Args
-        ----
+        Parameters
+        ----------
         name: the name to save the models' weights with. Extension (.pth) should not be mentionned. 
         """
         self._assert_model()

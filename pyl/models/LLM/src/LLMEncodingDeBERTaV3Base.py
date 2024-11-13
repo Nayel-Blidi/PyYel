@@ -22,8 +22,8 @@ class LLMEncodingDeBERTaV3Base(LLM):
         """
         Initializes the model with ``'MoritzLaurer/deberta-v3-base-zeroshot-v2.0'`` for zero-shot classification.
 
-        Args
-        ----
+        Parameters
+        ----------
         weights_path: str, None
             The path to the folder where the models weights should be saved. If None, the current working 
             directory path will be used instead.
@@ -38,12 +38,20 @@ class LLMEncodingDeBERTaV3Base(LLM):
         return None
 
 
+    def _update_docstring(child_specific_doc):
+        def decorator(method):
+            parent_doc = method.__doc__ or ""
+            method.__doc__ = parent_doc + child_specific_doc
+            return method
+        return decorator
+
+
     def load_model(self, task: str = "zero-shot-classification", display: bool = False):
         """
         Loads the MoritzLaurer/deberta-v3-base-zeroshot-v2.0 model for zero-shot classification.
 
-        Args
-        ----
+        Parameters
+        ----------
         task: str, 'zero-shot-classification'
             The task to use this encoder for. Default is zero-shoot-classification.
         
@@ -90,6 +98,8 @@ class LLMEncodingDeBERTaV3Base(LLM):
     def test_model(self):
         pass
 
+    
+    @_update_docstring()
     def evaluate_model(self, 
                     prompts: list[str], 
                     candidate_labels: list[str], 
@@ -99,8 +109,8 @@ class LLMEncodingDeBERTaV3Base(LLM):
         """
         Classifies the prompts using zero-shot classification.
 
-        Args
-        ----
+        Parameters
+        ----------
             prompts: List[str]
                 The list of prompts to classify.
             candidate_labels: List[str] 
@@ -138,8 +148,8 @@ class LLMEncodingDeBERTaV3Base(LLM):
         """
         Postprocesses the pipeline output to make it directly readable.
 
-        Args
-        ----
+        Parameters
+        ----------
         results: list[dict]
             The pipeline outputs that will be cherry-picked to only return the predicted label or output.
         multi_label: bool

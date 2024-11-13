@@ -21,8 +21,8 @@ class CNN(ABC):
         Inits a CNN base class, and loads it from a local checkpoint or from PyTorch Hub using 
         the Torchvision API.
 
-        Args
-        ----
+        Parameters
+        ----------
         model_name: str
             The name of the model to use. The folder where the weights will saved will have the same name.
         weights_path: str, None
@@ -82,8 +82,8 @@ class CNN(ABC):
         """
         Empties a folder.
 
-        Args
-        ----
+        Parameters
+        ----------
         path: str
             The path to the folder to empty from all its content
         """
@@ -140,8 +140,8 @@ class CNN(ABC):
         If no name is specified, the previous weights will be replaced by the newly computed ones.
         If this is a new model, a default weights file will be created (might delete a previously unamed model).
 
-        Args
-        ----
+        Parameters
+        ----------
         name: the name to save the models' weights with. Extension (.pth) should not be mentionned. 
         """
         
@@ -182,8 +182,8 @@ class CNN(ABC):
         manual saving. In this last scenario, the previous optimizer parameters will be overwritten instead of saving a new version 
         at a later epoch. 
 
-        Args
-        ----
+        Parameters
+        ----------
         - lr: the learning rate
         - weight_decay: the weight_decay to apply to the targeted weights
         - ...
@@ -227,8 +227,8 @@ class CNN(ABC):
         """
         Plots the losses history of a model. Plots the checkpoint loss at which a model was saved.
 
-        Args
-        ----
+        Parameters
+        ----------
         - state_dict: the dictionnary of model 
         - display: whereas to show the plot in a pop-up window or not
         """

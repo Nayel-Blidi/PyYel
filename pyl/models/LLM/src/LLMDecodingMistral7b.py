@@ -20,8 +20,8 @@ class LLMDecodingMistral7b(LLM):
         """
         Initializes the model with ``'mistralai/Mistral-7B-v0.1'`` for zero-shot classification.
 
-        Args
-        ----
+        Parameters
+        ----------
         weights_path: str, None
             The path to the folder where the models weights should be saved. If None, the current working 
             directory path will be used instead.
@@ -40,8 +40,8 @@ class LLMDecodingMistral7b(LLM):
         """
         Loads the Mistral7b model from the HuggingFace public weights at 'mistralai/Mistral-7B-v0.1'
 
-        Args
-        ----
+        Parameters
+        ----------
         quantization: str, None
             Quantisizes a model to reduce its memory usage and improve speed. Quantization can only be done
             on GPU be in 4-bits (``quantization='4b'``) or 8-bits (``quantization='8b'``).  
@@ -99,8 +99,8 @@ class LLMDecodingMistral7b(LLM):
         """
         Evaluates a prompt and returns the model answer.
 
-        Args
-        ----
+        Parameters
+        ----------
         prompt: str
             The model querry.
         context: str, ''

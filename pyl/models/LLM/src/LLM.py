@@ -31,8 +31,8 @@ class LLM(ABC):
         Inits a LLM base class, and loads it from a local checkpoint or from HF using 
         the transformers API.
 
-        Args
-        ----
+        Parameters
+        ----------
         model_name: str
             The name of the model to use. The folder where the weights will saved will have the same name.
         weights_path: str, None
@@ -119,8 +119,8 @@ class LLM(ABC):
         """
         Auto maps the device weights repartition across PC GPU/CPU.
 
-        Args
-        ----
+        Parameters
+        ----------
         model_ram: float
             The RAM required by the weights to be loaded into the VRAM/RAM.
         dtype_correction: float, 1.0
@@ -179,8 +179,8 @@ class LLM(ABC):
         Takes a model and loads it across the available devices. Prioritizes GPUs first, in their natural 
         order (unless gpu:0 is the CPU chipset, which will be skipped).
 
-        Args
-        ----
+        Parameters
+        ----------
         model: Any
             The loaded model. Can be inialized with empty weights to improve performances, and only retreive the device_map.
         dtype_correction: float, 1.0
@@ -236,8 +236,8 @@ class LLM(ABC):
         """
         Saves a string output into a txt file.
 
-        Args
-        ----
+        Parameters
+        ----------
         string_data: str
             The content to save into a text file.
         save_path: str, None
@@ -262,8 +262,8 @@ class LLM(ABC):
         - Mixed-precision distributes workload across GPU and CPU (if GPU is available)
         - Data is regrouped as a single batch before post process
 
-        Args
-        ----
+        Parameters
+        ----------
         prompts: list[str]
             The list of inputs to infer on. Should be identical to the expected ``evaluate_model()`` method args.
         batch_size: int, 8
@@ -307,8 +307,8 @@ class LLM(ABC):
         """
         Empties a folder from all its content, files and folders.
 
-        Args
-        ----
+        Parameters
+        ----------
         path: str
             The path to the folder to empty
         include: str or list[str], []
@@ -351,3 +351,5 @@ class LLM(ABC):
                         print(f"Pipeline >> Failed to delete {file_path}: {e}")
 
         return True
+    
+

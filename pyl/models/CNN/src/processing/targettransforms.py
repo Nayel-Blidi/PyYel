@@ -55,8 +55,8 @@ class ToTensor(CustomTransform):
         """
         Transforms a regular array into a tensor of same dtype
 
-        Args
-        ----
+        Parameters
+        ----------
         - dtype: the tensor dtype to transform the array into. If None, dtype is infered from array dtype
         """
         self.dtype = dtype

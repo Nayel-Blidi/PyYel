@@ -42,8 +42,8 @@ class BaseSampler(Sampler):
         This base sampler handles all the pipelines step without using any data selection 
         strategy, but keeping every datapoint that is already labellized.
 
-        Args
-        ----
+        Parameters
+        ----------
         - batch_name: the name of the batch to sample data from
         - task_name: the name of the task to sample labels from. The batch must support this task, otherwise
         the sampling won't be executed
@@ -67,8 +67,8 @@ class BaseSampler(Sampler):
         The strategy to apply.
         The BaseSampler applies a base strategy, that keeps as many training examples as possible.
 
-        Args
-        ----
+        Parameters
+        ----------
         - df: the df to read datapoints from
 
         Returns

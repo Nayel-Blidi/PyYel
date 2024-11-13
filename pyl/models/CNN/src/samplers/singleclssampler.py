@@ -41,8 +41,8 @@ class SingleClsSampler(Sampler):
         This single cls sampler handles all the pipeline steps by keeping as many training example as possible
         while removing examples featuring multiple label classes at once.
 
-        Args
-        ----
+        Parameters
+        ----------
         - batch_name: the name of the batch to sample data from
         - task_name: the name of the task to sample labels from. The batch must support this task, otherwise
         the sampling won't be executed
@@ -65,8 +65,8 @@ class SingleClsSampler(Sampler):
         """
         The strategy to apply to select the datapoints.
 
-        Args
-        ----
+        Parameters
+        ----------
         - df: the df to read datapoints from
 
         Returns

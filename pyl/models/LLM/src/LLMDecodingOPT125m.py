@@ -20,8 +20,8 @@ class LLMDecodingOPT125m(LLM):
         """
         Initializes the model with ``'facebook/opt-125m'`` for text-to-text generation.
 
-        Args
-        ----
+        Parameters
+        ----------
         weights_path: str, None
             The path to the folder where the models weights should be saved. If None, the current working 
             directory path will be used instead.
@@ -40,8 +40,8 @@ class LLMDecodingOPT125m(LLM):
         """
         Loads the OPT-125M model from the HuggingFace public weights at 'facebook/opt-125m'.
 
-        Args
-        ----
+        Parameters
+        ----------
         quantization: str, None
             Quantisizes a model to reduce its memory usage and improve speed. Quantization can only be done
             on GPU be in 4-bits (``quantization='4b'``) or 8-bits (``quantization='8b'``).  
@@ -105,8 +105,8 @@ class LLMDecodingOPT125m(LLM):
         """
         Evaluates a prompt and returns the model answer.
 
-        Args
-        ----
+        Parameters
+        ----------
         prompt: str
             The model querry.
         context: str

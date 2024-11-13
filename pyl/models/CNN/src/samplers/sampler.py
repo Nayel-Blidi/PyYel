@@ -38,8 +38,8 @@ class Sampler(ABC):
         This base sampler handles all the pipelines step without using any data selection 
         strategy, but keeping every datapoint that is already labellized.
 
-        Args
-        ----
+        Parameters
+        ----------
         - conn: a SQL (sqlite3) connection object, that links the classes to the database
         """    
 
@@ -101,8 +101,8 @@ class Sampler(ABC):
         Parses a downloaded batch to select the labellized datapoints among the batch. This is done
         by parsing every label files, and keeping only those with labels (classes) matching the given options
 
-        Args
-        ----
+        Parameters
+        ----------
         - min_contributions: the minimum of times a datapoint must have been labellized with said class to be selected
         - options: the list of classes that must appear on the datapoint to be used as a training example
         - label_task: the type of task
@@ -180,8 +180,8 @@ class Sampler(ABC):
         Splits the querried data into a training and testing batch. Can also be used out of the sampling
         pipeline as a util by overwriting the ``<datapoints_list>`` and/or ``<labels_list>`` inputs.
 
-        Args
-        ----
+        Parameters
+        ----------
         - test_size: the percentage of batch data to allocate to the testing loop. Thus it won't be used during 
         the whole training process.
         - datapoints_list: the list of paths as described in the ``<from_DB>`` method 
@@ -211,8 +211,8 @@ class Sampler(ABC):
         """
         Returns a training and testing dataloaders objects from the sampled ``datapoints_list`` and ``labels_list``.
 
-        Args
-        ----
+        Parameters
+        ----------
         - dataset: a torch Dataset subclass that is compatible with the performed task (a forciori the loaded model)
         - transform: a short datapoints preprocessing pipeline, that should be model specific 
         (such as resizing an image input, or vectorizing a word...) and data specific (normalizing...)
