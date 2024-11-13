@@ -5,12 +5,17 @@ import shutil
 import psutil
 
 import torch
+from torch.utils.data import DataLoader
+from torch.amp import autocast, GradScaler
+
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from accelerate import init_empty_weights, infer_auto_device_map, dispatch_model
 
 from huggingface_hub import login
 from huggingface_hub import snapshot_download
+from datasets import Dataset
+from transformers import Pipeline, AutoModel, AutoTokenizer
 
 LOCAL_DIR = os.path.dirname(__file__)
 if __name__ == "__main__":
@@ -195,9 +200,11 @@ class LLM(ABC):
         return True
 
 
-
     @abstractmethod
     def load_model(self):
+        self.tokenizer: AutoTokenizer = None
+        self.model: AutoModel = None
+        self.pipe: Pipeline = None
         pass
 
     @abstractmethod
@@ -215,6 +222,15 @@ class LLM(ABC):
     @abstractmethod
     def evaluate_model(self, prompt: str, **kwargs):
         pass
+
+    @abstractmethod
+    def _postprocess(self):
+        pass
+
+    @abstractmethod
+    def _preprocess(self):
+        pass
+
 
     def save_output(self, string_data: str, save_path: str = None):
         """
@@ -239,69 +255,99 @@ class LLM(ABC):
         return True 
 
 
-    def parallelized_evaluate_model(self, prompts: list[str], max_workers: int = os.cpu_count(), **kwargs):
+    def parallelize_evaluate_model(self, prompts: list[str], batch_size: int = 2**3, **model_kwargs):
         """
-        Parallelizes the inference of a list of prompts by dividing the inference into multiple subprocesses.
-        By default, assigns one task per logical core. This will likely be too demanding if the inference is
-        done on CPU, or if the GPU input requires a hefty preprocessing.
+        Optimizes an inference process by distributing the workload:
+        - Dataloader preprocesses batches of data before sending it to GPU using CPU subprocesses
+        - Mixed-precision distributes workload across GPU and CPU (if GPU is available)
+        - Data is regrouped as a single batch before post process
 
         Args
         ----
         prompts: list[str]
-            The list of inputs to infer. This list will be divided between the workers.
-        max_workers: int
-            The number of processes to divide the work into. By default, is equal to the number of
-            CPU processors.
+            The list of inputs to infer on. Should be identical to the expected ``evaluate_model()`` method args.
+        batch_size: int, 8
+            The size of the batch of data to send to the model at once. Larger batches require more VRAM.
+        model_kwargs: dict
+            The kwargs to pass to the model. Should be similar to the expected ``evaluate_model()`` method args.
 
         Returns
         -------
-        sorted_outputs: dict
-            The inferred outputs, in the same key order as given in the prompts list. Keys are the input prompts.
-            Values are the output results.
+        results: dict
+            The postprocessed model predictions.
         """
 
-        failures = []
-        outputs = {}
-        with tqdm(total=len(prompts)) as pbar:
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = {executor.submit(self.evaluate_model, prompt=prompt, **kwargs): i 
-                           for i, prompt in enumerate(prompts)}
+        dataset = Dataset.from_dict({"text": self._preprocess(prompts)})
+        dataloader = DataLoader(dataset=dataset, batch_size=batch_size)#, num_workers=10*max_workers)
 
-                for future in as_completed(futures):
-                    try:
-                        # appends (prompt_idx, prompt, output(prompt))
-                        outputs[futures[future]] = {"input": prompts[futures[future]], "output": future.result()}
-                    except Exception as e:
-                        failures.append(future)
-                    pbar.update(1)
 
-        if failures:
-            print(f"S3Client >> {len(failures)} failures happened during model inference: ", *failures, sep="\n")
+        results = []
+        self.pipe._batch_size = batch_size
+        with torch.no_grad():
+            for batch in tqdm(dataloader, colour="green", postfix="Model Inference"):
+                
+                self.pipe.call_count = 0 # Removes sequential call warning
 
-        return dict(sorted(outputs.items()))
+                if self.device != "cpu":
+                    with autocast(device_type="cuda"):
+                        outputs = self.pipe(batch["text"], **model_kwargs)
+                        # outputs = self.evaluate_model(prompts=batch["text"], **model_kwargs)
+                        results.extend(outputs)
+
+                else:
+                    outputs = self.pipe(batch["text"], **model_kwargs)
+                    results.extend(outputs)
+
+        results = self._postprocess(results=results, **model_kwargs)
+
+        return results
 
     
-    def _empty_folder(self, path: str = None):
+    def _empty_folder(self, path: str, include: str | list[str] = [], exclude: str | list[str] = []):
         """
-        Empties a folder.
+        Empties a folder from all its content, files and folders.
 
         Args
         ----
         path: str
-            The path to the folder to empty from all its content
+            The path to the folder to empty
+        include: str or list[str], []
+            A list of extensions or files to include to the deletion list. Extensions must be of format '.ext'. If empty, 
+            will try to delete any file but those whose extensions are excluded (cf. ``exclude``).
+        exclude: str or list[str], []
+            A list of extensions of files to exclude from deletion. Will only be used if include is empty. 
         """
+
+        if type(include) is str:
+            include = [include]
+        if type(exclude) is str:
+            exclude = [exclude]
+
+        # Corrects the missing '.' in from of the extension
+        for extension in include:
+            if not extension.startswith('.'):
+                # In the case extension is actually a file, the original include pattern is kept, and the .include pattern is added
+                include.append(f".{extension}")
+        for extension in exclude:
+            if not extension.startswith('.'):
+                # In the case extension is actually a file, the original include pattern is kept, and the .include pattern is added
+                exclude.append(f".{extension}")
         
         if os.path.exists(path):
             for filename in os.listdir(path):
                 file_path = os.path.join(path, filename)
-                try:
-                    # Check if it is a file and delete it
-                    if os.path.isfile(file_path) or os.path.islink(file_path):
-                        os.unlink(file_path)
-                    # Check if it is a directory and delete it and its contents
-                    elif os.path.isdir(file_path):
-                        shutil.rmtree(file_path)
-                except Exception as e:
-                    print(f"LLM >> Failed to empty {path}: {e}")
+                file_extension = os.path.splitext(filename)[-1]
+                if file_extension in exclude or filename in exclude:
+                    None
+                elif (os.path.splitext(filename)[-1] in include) or (include == []):
+                    try:
+                        # Check if it is a file and delete it
+                        if os.path.isfile(file_path) or os.path.islink(file_path):
+                            os.unlink(file_path)
+                        # Check if it is a directory and delete it and its contents
+                        elif os.path.isdir(file_path):
+                            shutil.rmtree(file_path)
+                    except Exception as e:
+                        print(f"Pipeline >> Failed to delete {file_path}: {e}")
 
         return True

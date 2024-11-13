@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "PyYel"
-version = "0.1.0"
-description = "Transformers release"
+version = "0.1.1"
+description = "Parallelized GPU computing for LLM update"
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [
