@@ -38,14 +38,6 @@ class LLMEncodingDeBERTaV3Base(LLM):
         return None
 
 
-    def _update_docstring(child_specific_doc):
-        def decorator(method):
-            parent_doc = method.__doc__ or ""
-            method.__doc__ = parent_doc + child_specific_doc
-            return method
-        return decorator
-
-
     def load_model(self, task: str = "zero-shot-classification", display: bool = False):
         """
         Loads the MoritzLaurer/deberta-v3-base-zeroshot-v2.0 model for zero-shot classification.
@@ -88,18 +80,7 @@ class LLMEncodingDeBERTaV3Base(LLM):
         
         return None
     
-
-    def sample_model(self):
-        pass
-
-    def train_model(self):
-        pass
-
-    def test_model(self):
-        pass
-
     
-    @_update_docstring()
     def evaluate_model(self, 
                     prompts: list[str], 
                     candidate_labels: list[str], 
@@ -128,7 +109,7 @@ class LLMEncodingDeBERTaV3Base(LLM):
                 If ``multi_label==False`` returns a list of one element dict for each prompt.
         """
 
-        if isinstance(prompts, str): prompts = [prompts]
+        prompts = self._preprocess(prompts=prompts)
 
         results = []
         for prompt in prompts:
@@ -139,8 +120,11 @@ class LLMEncodingDeBERTaV3Base(LLM):
 
     def _preprocess(self, prompts: list[str], **kwargs):
         """
-        Preprocessing not required.
+        Preprocesses the pipeline inputs.
         """
+
+        if isinstance(prompts, str): prompts = [prompts]
+
         return prompts
 
 

@@ -81,16 +81,6 @@ class LLMEncodingDeBERTaV3BaseMNLI(LLM):
         if display: print(torch.cuda.memory_summary(device=torch.device('cuda')))
         
         return None
-        
-        
-    def sample_model(self):
-        pass
-
-    def train_model(self):
-        pass
-
-    def test_model(self):
-        pass
 
 
     def evaluate_model(self, 

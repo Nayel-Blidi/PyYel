@@ -81,19 +81,6 @@ class LLMDecodingMistral7b(LLM):
 
         return True
 
-
-
-    def sample_model(self):
-        pass
-
-    
-    def train_model(self):
-        pass
-
-    
-    def test_model(self):
-        pass
-
     
     def evaluate_model(self, prompt: str, context: str = "", max_tokens: int = 1000, display: bool = False):
         """

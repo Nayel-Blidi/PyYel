@@ -208,18 +208,6 @@ class LLM(ABC):
         pass
 
     @abstractmethod
-    def sample_model(self):
-        pass
-
-    @abstractmethod
-    def train_model(self):
-        pass
-
-    @abstractmethod
-    def test_model(self):
-        pass
-
-    @abstractmethod
     def evaluate_model(self, prompt: str, **kwargs):
         pass
 

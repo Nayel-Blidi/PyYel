@@ -73,7 +73,7 @@ class LLMDecodingPhiMoE(LLM):
         else:
             quantization_config = None
 
-        self._dispatch_device(model=AutoModelForCausalLM.from_pretrained(self.model_folder, 
+        self._device_dispatch(model=AutoModelForCausalLM.from_pretrained(self.model_folder, 
                                                                          trust_remote_code=True, 
                                                                          quantization_config=quantization_config),
                               display=display)
@@ -89,20 +89,8 @@ class LLMDecodingPhiMoE(LLM):
         
         return None
 
-
-    def sample_model(self):
-        pass
-
     
-    def train_model(self):
-        pass
-
-    
-    def test_model(self):
-        pass
-
-    
-    def evaluate_model(self, prompt: str, display=True):
+    def evaluate_model(self, prompt: str, context: str = "", display=True):
         """
         Evaluates a prompt and returns the model answer.
 
@@ -112,15 +100,20 @@ class LLMDecodingPhiMoE(LLM):
             The model querry
         display: bool
             Whereas printing the model answer or not. Default is 'True'
+
+        Returns
+        -------
+        output: str
+            The model's response to the input.
+
+        Example
+        -------
+        >>> prompt = "Synthesize this conversation"
+        >>> context = f'{conversation}'
+        # The model input will be formatted as:
+        >>> model_input = context + prompt
         """
 
-        # Model settings
-        pipe = pipeline(
-            "text-generation",
-            model=self.model,
-            tokenizer=self.tokenizer,
-            # model_kwargs={"quantization_config":quantization_config}
-        )
         generation_args = {
             "max_new_tokens": 1000,
             "return_full_text": False,
@@ -128,26 +121,22 @@ class LLMDecodingPhiMoE(LLM):
             "do_sample": False,
         }
 
-        # Model enhanced prompting
-        json_file_path = os.path.join(MAIN_DIR, "instructions\\src\\template\\template_json.json")
-        with open(json_file_path, 'r') as file:
-            json_content = json.load(file)
-        json_string = json.dumps(json_content)
-        messages = [
-            {"role": "system", "content": json_string+"\n You answer the user's request by only filling the previous json template"},
-            {"role": "user", "content": prompt + "Just return the JSON content, without any other text"},
-            {"role": "system", "content": "Fill the json with as many blocs as required and return only the completed json file."},
-            # {"role": "assistant", "content": "json_content"}, # NB 
-        ]
+        message = self._preprocess(prompt=prompt, context=context)
 
-        output = pipe(messages, **generation_args)
+        result = self.pipe(message, **generation_args)
 
-        output: str = output[0]['generated_text']
-        output = "{" + output.split(sep="{", maxsplit=1)[-1] # Retreives the start of the JSON (i.e. the first bracket)
-
-        if display:
-            print(output)
-        
-        return output
+        return self._postprocess(result=result)
 
 
+    def _preprocess(self, prompt: str, context: str, **kwargs):
+        """
+        Preprocessing not required.
+        """
+        return context + '\n' + prompt
+
+
+    def _postprocess(self, result: list[dict], **kwargs):
+        """
+        Postprocesses the pipeline output to make it directly readable.
+        """
+        return result[0]["generated_text"]

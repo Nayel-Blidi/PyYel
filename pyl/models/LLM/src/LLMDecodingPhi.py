@@ -101,18 +101,6 @@ class LLMDecodingPhi(LLM):
         
         return None
 
-
-    def sample_model(self):
-        pass
-
-    
-    def train_model(self):
-        pass
-
-    
-    def test_model(self):
-        pass
-
     
     def evaluate_model(self, prompt: str, context: str = "", max_tokens: int = 1000, display: bool = False):
         """
@@ -131,10 +119,15 @@ class LLMDecodingPhi(LLM):
         Returns
         -------
         output: str
-            The model response.
+            The model's response to the input.
+
+        Example
+        -------
+        >>> prompt = "Synthesize this conversation"
+        >>> context = f'{conversation}'
+        # The model input will be formatted as:
+        >>> model_input = context + prompt
         """
-
-
 
         generation_args = {
             "max_new_tokens": max_tokens,
@@ -144,8 +137,8 @@ class LLMDecodingPhi(LLM):
             # "stream":True
         }
 
-        messages = context + '\n' + prompt
-        output: str = self.pipe(messages, **generation_args)[0]["generated_text"]
+        message = context + '\n' + prompt
+        output: str = self.pipe(message, **generation_args)[0]["generated_text"]
         if display: print(output)
         
         return output

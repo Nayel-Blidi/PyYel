@@ -82,15 +82,6 @@ class LLMEncodingBARTLargeMNLI(LLM):
         return None
 
 
-    def sample_model(self):
-        pass
-
-    def train_model(self):
-        pass
-
-    def test_model(self):
-        pass
-
     def evaluate_model(self, 
                     prompt: str, 
                     candidate_labels: list[str], 
