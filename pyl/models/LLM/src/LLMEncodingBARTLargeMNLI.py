@@ -111,52 +111,6 @@ class LLMEncodingBARTLargeMNLI(LLM):
                 The classification results as a sorted dictionnary. Dictionnary structure is {label: prob} where label is a string, prob is a float between 0 and 1.
                 If ``multi_label==False`` returns a one element list
         """
-
-        result = self.pipe(prompt, candidate_labels=candidate_labels, multi_label=multi_label, hypothesis_template=hypothesis_template)
-        
-        scores = result["scores"]
-        labels = result["labels"]
-
-        classification_result = dict(sorted(dict(zip(labels, scores)).items(), key=lambda item: item[1], reverse=True)) # ensures output is sorted
-        if not multi_label:
-            key = next(iter(classification_result)) # retreives first key
-            classification_result = {key: classification_result[key]} # 'truncates' the dictionnary to keep the first key/value pair only
-
-        if display:
-            print("LLMBARTLargeMNLI >> Model output:", json.dumps(result, indent=4))
-
-        return classification_result
-
-
-    def evaluate_model(self, 
-                    prompt: str, 
-                    candidate_labels: list[str], 
-                    hypothesis_template: str = "This text is about {}.", 
-                    multi_label: bool = False,
-                    display: bool = False) -> dict:
-        """
-        Classifies the prompt using zero-shot classification.
-
-        Parameters
-        ----------
-            prompt: str
-                The prompt to classify.
-            candidate_labels: list[str] 
-                The list of candidate labels for classification.
-            hypothesis_template: str, 'This text is about {}.'
-                The template for hypothesis generation. Default is "This text is about {}."
-            multi_label: bool
-                Whether to perform multi-label classification. Default is False.
-                If ``multi_label==True``, returns every label logit, otherwise returns the most likely label.
-            display: bool
-                Whether to print the model output. Default is True.
-
-        Returns
-        -------
-            classification_result: dict
-                The classification results as a sorted dictionnary. Dictionnary structure is {label: prob} where label is a string, prob is a float between 0 and 1.
-                If ``multi_label==False`` returns a one element list
-        """
         if isinstance(prompts, str): prompts = [prompts]
 
         results = []
