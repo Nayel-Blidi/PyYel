@@ -24,13 +24,13 @@ if __name__ == "__main__":
 
 class LLM(ABC):
     """
-    Base LLM class
+    Base LLM class.
     """
     def __init__(self, model_name: str, weights_path: str = None) -> None:
         """
-        Inits a LLM base class, and loads it from a local checkpoint or from HF using 
+        Initializes a LLM base class, and loads it from a local checkpoint or from HF using 
         the transformers API.
-
+        
         Parameters
         ----------
         model_name: str

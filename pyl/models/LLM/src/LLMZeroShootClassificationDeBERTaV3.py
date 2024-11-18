@@ -112,9 +112,9 @@ class LLMZeroShotClassificationDeBERTaV3(LLM):
 
         Parameters
         ----------
-            prompts: List[str]
+            prompts: list[str]
                 The list of prompts to classify.
-            candidate_labels: List[str] 
+            candidate_labels: list[str] 
                 The list of candidate labels for classification.
             multi_label: bool
                 Whether to perform multi-label classification. Default is False.
@@ -124,7 +124,7 @@ class LLMZeroShotClassificationDeBERTaV3(LLM):
 
         Returns
         -------
-            classification_results: List[Dict[str, float]]
+            classification_results: list[Dict[str, float]]
                 The classification results as a list of sorted dictionaries. Each dictionary structure is {label: prob} where label is a string, prob is a float between 0 and 1.
                 If ``multi_label==False`` returns a list of one element dict for each prompt.
         """
