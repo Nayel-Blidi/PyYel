@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "PyYel"
-version = "0.1.1"
-description = "Parallelized GPU computing for LLM update"
+version = "0.1.2"
+description = "Model backbone inheritance across same class LLM"
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [

@@ -1,27 +1,19 @@
 import os, sys
-import json
 
-import torch
-import numpy as np
 from tqdm import tqdm
-
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, BitsAndBytesConfig, pipeline
-from accelerate import init_empty_weights, infer_auto_device_map
-
-LOCAL_DIR = os.path.dirname(__file__)
-if __name__ == "__main__":
-    sys.path.append(os.path.dirname(os.path.dirname(LOCAL_DIR)))
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+from accelerate import init_empty_weights
 
 from .LLM import LLM
 
 
-class LLMEncodingBARTLargeMNLI(LLM):
+class LLMZeroShotClassificationBART(LLM):
     """
-    An implementation of the HuggingFace facebook/bart-large-mnli transformer.
+    A collection of pretrained models based on the Facebook AI Research's BART backbone, fine-tuned for zero-shot text classification.
     """
-    def __init__(self, weights_path: str = None) -> None:
+    def __init__(self, weights_path: str = None, version: str = "large-mnli") -> None:
         """
-        Initializes the model with ``'facebook/bart-large-mnli'`` for zero-shot classification.
+        Initializes a pretrained model based on the Facebook AI Research's BART backbone, fine-tuned for zero-shot text classification.
 
         Parameters
         ----------
@@ -29,12 +21,25 @@ class LLMEncodingBARTLargeMNLI(LLM):
             The path to the folder where the models weights should be saved. If None, the current working 
             directory path will be used instead.
 
+        Versions
+        --------
+        - ``'large-mnli'`` _(default)_ : The base 407 million parameters version of BART fine-tuned over the MNLI dataset.
+            - Initializes the model with ``'facebook/bart-large-mnli'`` for zero-shot classification.
+            - For the full float32 model, requires 1Go of RAM/VRAM. 
+
         Note
         ----
-        - For the full float32 model, requires 1Go of RAM/VRAM. 
         - Multiple encoding tasks may be supported. See ``load_model()``.
+        - Quantization isn't supported. See ``load_model()``.
         """
-        super().__init__(model_name="facebook/bart-large-mnli", weights_path=weights_path)
+
+        self.verison = version
+        if version == "large-mnli": 
+            super().__init__(model_name="facebook/bart-large-mnli", weights_path=weights_path)
+        else:
+            print("LLMZeroShotClassificationBART >> Warning: Invalid model version, model 'large-mnli' will be used instead.")
+            self.version = "large-mnli"
+            super().__init__(model_name="facebook/bart-large-mnli", weights_path=weights_path)
 
         return None
 
@@ -47,15 +52,18 @@ class LLMEncodingBARTLargeMNLI(LLM):
         ----------
         task: str, 'zero-shot-classification'
             The task to use this encoder for. Default is zero-shoot-classification.
+        display: bool, False
+            Prints the model's device mapping if ``True``.
         
         Note
         ----
         - Quantization is not available.
+            - Reason: Casting from these float32 models results in highly unstable models.
         """
 
         supported_tasks = ["zero-shot-classification"]
         if task not in supported_tasks:
-            print("LLMEncoderBARTLargeMNLI >> Task not supported, the pipeline will likely break. "
+            print("LLMZeroShotClassificationBART >> Task not supported, the pipeline will likely break. "
                   "Supported tasks are:", *supported_tasks)
         
         with init_empty_weights(include_buffers=True):
@@ -76,9 +84,7 @@ class LLMEncodingBARTLargeMNLI(LLM):
         self.pipe = pipeline(task, 
                              model=self.model,
                              tokenizer=self.tokenizer)
-        
-        if display: print(torch.cuda.memory_summary(device=torch.device('cuda')))
-        
+                
         return None
 
 
@@ -111,19 +117,25 @@ class LLMEncodingBARTLargeMNLI(LLM):
                 The classification results as a sorted dictionnary. Dictionnary structure is {label: prob} where label is a string, prob is a float between 0 and 1.
                 If ``multi_label==False`` returns a one element list
         """
-        if isinstance(prompts, str): prompts = [prompts]
+
+        prompts = self._preprocess(prompts=prompts)
 
         results = []
         for prompt in prompts:
-            results.append(self.pipe(prompt, candidate_labels=candidate_labels, multi_label=multi_label))
+            results.append(self.pipe(prompt, candidate_labels=candidate_labels, multi_label=multi_label, hypothesis_template=hypothesis_template))
         
         return self._postprocess(results=results, multi_label=multi_label, display=display)
 
 
     def _preprocess(self, prompts: list[str], **kwargs):
         """
-        Preprocessing not required.
+        Preprocesses the pipeline inputs.
         """
+
+        if isinstance(prompts, str): prompts = [prompts]
+        if not isinstance(prompts, list): 
+            print(f"LLMZeroShotClassificationBART >> Error: Model's input should be of type 'list[str]', got '{type(prompts)}' instead.")
+
         return prompts
 
 

@@ -1,27 +1,19 @@
 import os, sys
-import json
 
-import torch
-import numpy as np
 from tqdm import tqdm
-
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, BitsAndBytesConfig, pipeline
-from accelerate import init_empty_weights, infer_auto_device_map
-
-LOCAL_DIR = os.path.dirname(__file__)
-if __name__ == "__main__":
-    sys.path.append(os.path.dirname(os.path.dirname(LOCAL_DIR)))
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+from accelerate import init_empty_weights
 
 from .LLM import LLM
 
 
-class LLMEncodingDeBERTaV3Large(LLM):
+class LLMZeroShotClassificationDeBERTaV3(LLM):
     """
-    An implementation of the HuggingFace MoritzLaurer/deberta-v3-large-zeroshot-v2.0 transformer.
+    A collection of pretrained models based on the Microsoft's DeBERTaV3 backbone, fine-tuned for zero-shot text classification.
     """
-    def __init__(self, weights_path: str = None) -> None:
+    def __init__(self, weights_path: str = None, version: str = "base") -> None:
         """
-        Initializes the model with ``'MoritzLaurer/deberta-v3-large-zeroshot-v2.0'`` for zero-shot classification.
+        Initializes a pretrained model based on the Microsoft's DeBERTaV3 backbone, fine-tuned for zero-shot text classification.
 
         Parameters
         ----------
@@ -29,34 +21,62 @@ class LLMEncodingDeBERTaV3Large(LLM):
             The path to the folder where the models weights should be saved. If None, the current working 
             directory path will be used instead.
 
+        Versions
+        --------
+        - ``'base'`` _(default)_ : The base 86 million parameters version of DeBERTaV3. 
+            - Initializes the model with ``'MoritzLaurer/deberta-v3-base-zeroshot-v2.0'`` weights for zero-shot classification.
+            - For the full float32 model, requires 0.5Go of RAM/VRAM. 
+
+        - ``'large'``: The large 304 million parameters version of DeBERTaV3.
+            - Initializes the model with ``'MoritzLaurer/deberta-v3-large-zeroshot-v2.0'`` for zero-shot classification.
+            - For the full float32 model, requires 1Go of RAM/VRAM. 
+
+        - ``'base-mnli'``: The base 86 million parameters version of DeBERTaV3 fine-tuned over the MNLI dataset.
+            - Initializes the model with ``'MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli'`` for zero-shot classification.
+            - For the full float32 model, requires 0.5Go of RAM/VRAM. 
+            - This version is fine-tuned on the MNLI dataset.
+
         Note
         ----
-        - For the full float32 model, requires 0.5Go of RAM/VRAM. 
-        - This version is fine-tuned on the MNLI dataset.
         - Multiple encoding tasks may be supported. See ``load_model()``.
+        - Quantization isn't supported. See ``load_model()``.
         """
-        super().__init__(model_name="MoritzLaurer/deberta-v3-large-zeroshot-v2.0", weights_path=weights_path)
+
+        self.version = version
+        if version == "base": 
+            super().__init__(model_name="MoritzLaurer/deberta-v3-base-zeroshot-v2.0", weights_path=weights_path)
+        elif version == "large": 
+            super().__init__(model_name="MoritzLaurer/deberta-v3-large-zeroshot-v2.0", weights_path=weights_path)
+        elif version == "base-mnli": 
+            super().__init__(model_name="MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli", weights_path=weights_path)
+        else:
+            print("LLMZeroShotClassificationDeBERTaV3 >> Warning: Invalid model version, model 'base' will be used instead.")
+            self.version = "base"
+            super().__init__(model_name="MoritzLaurer/deberta-v3-base-zeroshot-v2.0", weights_path=weights_path)
 
         return None
 
-        
+
     def load_model(self, task: str = "zero-shot-classification", display: bool = False):
         """
-        Loads the MoritzLaurer/deberta-v3-large-zeroshot-v2.0 model for zero-shot classification.
+        Loads the selected model for zero-shot classification.
 
         Parameters
         ----------
         task: str, 'zero-shot-classification'
-            The task to use this encoder for. Default is zero-shoot-classification.
+            The task to use this encoder for.
+        display: bool, False
+            Prints the model's device mapping if ``True``.
         
         Note
         ----
         - Quantization is not available.
+            - Reason: Casting from these float32 models results in highly unstable models.
         """
 
         supported_tasks = ["zero-shot-classification"]
         if task not in supported_tasks:
-            print("LLMEncodingDeBERTaV3Large >> Task not supported, the pipeline will likely break. "
+            print("LLMEncodingDeBERTaV3Base >> Task not supported, the pipeline will likely break. "
                   "Supported tasks are:", *supported_tasks)
         
         with init_empty_weights(include_buffers=True):
@@ -77,18 +97,16 @@ class LLMEncodingDeBERTaV3Large(LLM):
         self.pipe = pipeline(task, 
                              model=self.model,
                              tokenizer=self.tokenizer)
-        
-        if display: print(torch.cuda.memory_summary(device=torch.device('cuda')))
-        
+                
         return None
-
-
+    
+    
     def evaluate_model(self, 
-                       prompts: list[str], 
-                       candidate_labels: list[str], 
-                       multi_label: bool = False,
-                       display: bool = False,
-                       **kwargs) -> list[dict[str, float]]:
+                    prompts: list[str], 
+                    candidate_labels: list[str], 
+                    multi_label: bool = False,
+                    display: bool = False,
+                    **kwargs) -> list[dict[str, float]]:
         """
         Classifies the prompts using zero-shot classification.
 
@@ -108,9 +126,10 @@ class LLMEncodingDeBERTaV3Large(LLM):
         -------
             classification_results: List[Dict[str, float]]
                 The classification results as a list of sorted dictionaries. Each dictionary structure is {label: prob} where label is a string, prob is a float between 0 and 1.
-                If ``multi_label==False`` returns a one element list for each prompt.
+                If ``multi_label==False`` returns a list of one element dict for each prompt.
         """
-        if isinstance(prompts, str): prompts = [prompts]
+
+        prompts = self._preprocess(prompts=prompts)
 
         results = []
         for prompt in prompts:
@@ -121,8 +140,13 @@ class LLMEncodingDeBERTaV3Large(LLM):
 
     def _preprocess(self, prompts: list[str], **kwargs):
         """
-        Preprocessing not required.
+        Preprocesses the pipeline inputs.
         """
+
+        if isinstance(prompts, str): prompts = [prompts]
+        if not isinstance(prompts, list): 
+            print(f"LLMZeroShotClassificationDeBERTaV3 >> Error: Model's input should be of type 'list[str]', got '{type(prompts)}' instead.")
+
         return prompts
 
 
@@ -155,4 +179,6 @@ class LLMEncodingDeBERTaV3Large(LLM):
             classification_results.append(classification_result)
 
         return classification_results
-    
+
+
+

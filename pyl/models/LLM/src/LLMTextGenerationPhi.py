@@ -1,24 +1,19 @@
 import os, sys
-import json
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, pipeline
-from accelerate import init_empty_weights, infer_auto_device_map
-
-LOCAL_DIR = os.path.dirname(__file__)
-if __name__ == "__main__":
-    sys.path.append(os.path.dirname(os.path.dirname(LOCAL_DIR)))
+from accelerate import init_empty_weights
 
 from .LLM import LLM
 
 
-class LLMDecodingPhi(LLM):
+class LLMTextGenerationPhi(LLM):
     """
-    An implementation of the public HuggingFace Phi-3.5 Mini Instruct transformer.
+    A collection of pretrained models based on the Microsoft's Phi 3.5 backbone, fine-tuned for text generation.
     """
-    def __init__(self, weights_path: str = None) -> None:
+    def __init__(self, weights_path: str = None, version: str = "mini") -> None:
         """
-        Initializes the model with ``'microsoft/Phi-3.5-mini-instruct'`` for text-to-text generation.
+        Initializes a pretrained model based on the Microsoft's Phi 3.5 backbone, fine-tuned for text generation.
 
         Parameters
         ----------
@@ -26,34 +21,54 @@ class LLMDecodingPhi(LLM):
             The path to the folder where the models weights should be saved. If None, the current working 
             directory path will be used instead.
 
+        Versions
+        --------
+        - ``'mini'`` _(default)_ : The smallest 3.8 billion parameters version of Phi 3.5. 
+            - Initializes the model with ``'microsoft/Phi-3.5-mini-instruct'`` weights for text generation.
+            - For the full bfloat16 model, requires 7.7Go of RAM/VRAM. 
+        
+        - ``'moe'``: The Mixture of Experts (MoE) 42 billion parameters version of Phi 3.5. 
+            - Initializes the model with ``'microsoft/Phi-3.5-moe'`` weights for text generation.
+            - The MoE design results in only 6.6 bilion of active parameters.
+            - For the full bfloat16 model, requires 41.9Go of RAM/VRAM.
+
         Note
         ----
-        - For the full bfloat16 model, requires 7.7Go of RAM/VRAM. If quantization is possible, it can be acheived 
-        when loading the model in ``load_model()``.
+        - Quantization may be supported. See ``load_model()``.
         """
-        super().__init__(model_name="microsoft/Phi-3.5-mini-instruct", weights_path=weights_path)
+
+        self.version = version
+        if version == "mini": 
+            super().__init__(model_name="microsoft/Phi-3.5-mini-instruct", weights_path=weights_path)
+        elif version == "moe": 
+            super().__init__(model_name="microsoft/Phi-3.5-MoE-instruct", weights_path=weights_path)
+        else:
+            print("LLMTextGenerationPhi >> Warning: Invalid model version, model 'mini' will be used instead.")
+            self.version = "mini"
+            super().__init__(model_name="microsoft/Phi-3.5-mini-instruct", weights_path=weights_path)
 
         return None
 
 
     def load_model(self, quantization: str = None, display: bool = False):
         """
-        Loads the Phi-3.5 Mini-Instruct model from the HuggingFace public weights 
-        at 'microsoft/Phi-3.5-mini-instruct'.
+        Loads the selected model for text generation.
 
         Parameters
         ----------
         quantization: str, None
             Quantisizes a model to reduce its memory usage and improve speed. Quantization can only be done
-            on GPU be in 4-bits (``quantization='4b'``) or 8-bits (``quantization='8b'``).  
+            on compatible GPUs, either in 4-bits (``quantization='4b'``) or 8-bits (``quantization='8b'``).  
+        display: bool, False
+            Prints the model's device mapping if ``True``.
 
         Note
         ----
-        - Make sure you have a combinaison of devices that has enough RAM/VRAM to host the whole model. Extra weights will be sent to CPU RAM, that will
-        greatly reduce the computing speed, additionnal memory needs offloaded to scratch disk (default disk).
-        - If you lack memory, try quantisizing the models for important performances improvements. Although may break some models or lead to more hallucinations.
-        - Quantization in 8-bits requires roughly 16Go of VRAM
-        - Quantization in 4-bits requires roughly 11Go of VRAM
+        - Make sure you have a combinaison of devices that has enough RAM/VRAM to host the whole model. Extra weights will be sent to CPU RAM, which will
+        greatly reduce the computing speed. Additionnal memory needs offloaded to scratch disk (default disk, not recommended).
+        - If you lack memory, try quantisizing the models for important performances improvements. This may break some models or lead to more hallucinations.
+            - Quantization in 8-bits requires roughly TODO of VRAM
+            - Quantization in 4-bits requires roughly TODO of VRAM
         """
         
         if quantization in ["8b", "4b"] and torch.cuda.is_available():
@@ -96,9 +111,7 @@ class LLMDecodingPhi(LLM):
                              tokenizer=self.tokenizer,
                              torch_dtype=torch.bfloat16,
                              device_map=self.device_map)
-        
-        if display: print(torch.cuda.memory_summary(device=torch.device('cuda')))
-        
+                
         return None
 
     
