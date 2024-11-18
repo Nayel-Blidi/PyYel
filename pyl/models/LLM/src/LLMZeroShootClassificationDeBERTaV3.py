@@ -38,7 +38,7 @@ class LLMZeroShotClassificationDeBERTaV3(LLM):
 
         Note
         ----
-        - Multiple encoding tasks may be supported. See ``load_model()``.
+        - Multiple tasks may be supported. See ``load_model()``.
         - Quantization isn't supported. See ``load_model()``.
         """
 
