@@ -1,7 +1,7 @@
 import os, sys
 
 from tqdm import tqdm
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 from accelerate import init_empty_weights
 
 from .LLM import LLM
@@ -78,12 +78,12 @@ class LLMTextSummarizationT5(LLM):
         """
         
         with init_empty_weights(include_buffers=True):
-            empty_model = AutoModelForSequenceClassification.from_pretrained(self.model_folder)
+            empty_model = AutoModelForSeq2SeqLM.from_pretrained(self.model_folder)
             self._device_map(model=empty_model, dtype_correction=1, display=display)
             del empty_model
 
         # MODEL SETUP (loading)
-        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_folder, 
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_folder, 
                                                                         trust_remote_code=True, 
                                                                         device_map=self.device_map)
         
@@ -99,7 +99,11 @@ class LLMTextSummarizationT5(LLM):
         return None
     
     
-    def evaluate_model(self, prompts: list[str], **kwargs) -> list[str]:
+    def evaluate_model(self, 
+                       prompts: list[str], 
+                       min_length: int = 10,
+                       max_length: int = 200,
+                       **kwargs) -> list[str]:
         """
         Summarizes the prompts.
 
@@ -118,7 +122,7 @@ class LLMTextSummarizationT5(LLM):
 
         results = []
         for prompt in prompts:
-            results.append(self.pipe(prompt))
+            results.append(self.pipe(prompt, min_length=min_length, max_length=max_length))
         
         return self._postprocess(results=results)
 
@@ -148,7 +152,7 @@ class LLMTextSummarizationT5(LLM):
         summarization_results = []
         for result in results:
             # TODO
-            summarization_results.append(result)
+            summarization_results.append(result[0]["summary_text"])
 
         return summarization_results
 
