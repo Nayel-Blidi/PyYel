@@ -156,3 +156,9 @@ class LLMTextGenerationPhi(LLM):
         
         return output
 
+
+    def _postprocess(self):
+        pass
+
+    def _preprocess(self):
+        pass

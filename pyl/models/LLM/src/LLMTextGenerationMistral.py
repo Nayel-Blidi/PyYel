@@ -138,3 +138,9 @@ class LLMTextGenerationMistral(LLM):
 
         return generated_text[len(prompt)+1:]
 
+
+    def _postprocess(self):
+        pass
+
+    def _preprocess(self):
+        pass
