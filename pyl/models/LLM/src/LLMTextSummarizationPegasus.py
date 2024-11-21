@@ -1,7 +1,7 @@
 import os, sys
 
 from tqdm import tqdm
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 from accelerate import init_empty_weights
 
 from .LLM import LLM
@@ -9,11 +9,11 @@ from .LLM import LLM
 
 class LLMTextSummarizationPegasus(LLM):
     """
-    A collection of pretrained models based on the Microsoft's DeBERTaV3 backbone, fine-tuned for zero-shot text classification.
+    A collection of pretrained models based on the Google's Pegasus backbone, fine-tuned for text summarization.
     """
-    def __init__(self, weights_path: str = None, version: str = "base") -> None:
+    def __init__(self, weights_path: str = None, version: str = "xsum") -> None:
         """
-        Initializes a pretrained model based on the Microsoft's DeBERTaV3 backbone, fine-tuned for zero-shot text classification.
+        Initializes a pretrained models based on the Google's Pegasus backbone, fine-tuned for text summarization.
 
         Parameters
         ----------
@@ -23,43 +23,51 @@ class LLMTextSummarizationPegasus(LLM):
 
         Versions
         --------
-        - ``'base'`` _(default)_ : The base 86 million parameters version of DeBERTaV3. 
-            - Initializes the model with ``'MoritzLaurer/deberta-v3-base-zeroshot-v2.0'`` weights for zero-shot classification.
-            - For the full float32 model, requires 0.5Go of RAM/VRAM. 
+        - ``'large'``: The original 568 million parameters large version of Pegasus. 
+            - Initializes the model with ``'google/pegasus-large'`` weights for text summarization.
+            - For the full float32 model, requires 2Go of RAM/VRAM. 
 
-        - ``'large'``: The large 304 million parameters version of DeBERTaV3.
-            - Initializes the model with ``'MoritzLaurer/deberta-v3-large-zeroshot-v2.0'`` for zero-shot classification.
-            - For the full float32 model, requires 1Go of RAM/VRAM. 
+        - ``'xsum'`` _(default)_: The 568 million parameters large version of Pegasus, fine-tuned on the XSUM dataset. 
+            - Initializes the model with ``'google/pegasus-xsum'`` weights for text summarization.
+            - For the full float32 model, requires 2Go of RAM/VRAM. 
 
-        - ``'xsum'``: The base 86 million parameters version of DeBERTaV3 fine-tuned over the MNLI dataset.
-            - Initializes the model with ``'MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli'`` for zero-shot classification.
-            - For the full float32 model, requires 0.5Go of RAM/VRAM. 
-            - This version is fine-tuned on the MNLI dataset.
+        - ``'cnn'``: The 568 million parameters large version of Pegasus, fine-tuned on the CNN Daily News dataset. 
+            - Initializes the model with ``'google/pegasus-cnn_dailymail'`` weights for text summarization.
+            - For the full float32 model, requires 2Go of RAM/VRAM. 
+
+        - ``'arxiv'`` : The 568 million parameters large version of Pegasus, fine-tuned on a scientifical Arxiv articles dataset. 
+            - Initializes the model with ``'google/pegasus-arxiv'`` weights for text summarization.
+            - For the full float32 model, requires 2Go of RAM/VRAM. 
 
         Note
         ----
+        - The extended Pegasus-x models are not supported due to their very large RAM requirements.
         - Multiple tasks may be supported. See ``load_model()``.
         - Quantization isn't supported. See ``load_model()``.
         """
 
         self.version = version
         if version == "base": 
-            super().__init__(model_name="MoritzLaurer/deberta-v3-base-zeroshot-v2.0", weights_path=weights_path)
+            super().__init__(model_name="google/pegasus-base", weights_path=weights_path)
         elif version == "large": 
-            super().__init__(model_name="MoritzLaurer/deberta-v3-large-zeroshot-v2.0", weights_path=weights_path)
-        elif version == "base-mnli": 
-            super().__init__(model_name="MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli", weights_path=weights_path)
+            super().__init__(model_name="google/pegasus-large", weights_path=weights_path)
+        elif version == "cnn": 
+            super().__init__(model_name="google/pegasus-cnn_dailymail", weights_path=weights_path)
+        elif version == "xsum": 
+            super().__init__(model_name="google/pegasus-xsum", weights_path=weights_path)
+        elif version == "arxiv": 
+            super().__init__(model_name="google/pegasus-arxiv", weights_path=weights_path)
         else:
-            print("LLMZeroShotClassificationDeBERTaV3 >> Warning: Invalid model version, model 'base' will be used instead.")
-            self.version = "base"
-            super().__init__(model_name="MoritzLaurer/deberta-v3-base-zeroshot-v2.0", weights_path=weights_path)
+            print("LLMTextSummarizationPegasus >> Warning: Invalid model version, model 'xsum' will be used instead.")
+            self.version = "xsum"
+            super().__init__(model_name="google/pegasus-xsum", weights_path=weights_path)
 
         return None
 
 
     def load_model(self, display: bool = False):
         """
-        Loads the selected model for zero-shot classification.
+        Loads the selected model for text summarization.
 
         Parameters
         ----------
@@ -73,12 +81,12 @@ class LLMTextSummarizationPegasus(LLM):
         """
 
         with init_empty_weights(include_buffers=True):
-            empty_model = AutoModelForSequenceClassification.from_pretrained(self.model_folder)
+            empty_model = AutoModelForSeq2SeqLM.from_pretrained(self.model_folder)
             self._device_map(model=empty_model, dtype_correction=1, display=display)
             del empty_model
 
         # MODEL SETUP (loading)
-        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_folder, 
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_folder, 
                                                                         trust_remote_code=True, 
                                                                         device_map=self.device_map)
         
@@ -125,7 +133,7 @@ class LLMTextSummarizationPegasus(LLM):
 
         if isinstance(prompts, str): prompts = [prompts]
         if not isinstance(prompts, list): 
-            print(f"LLMTextSummarizationT5 >> Error: Model's input should be of type 'list[str]', got '{type(prompts)}' instead.")
+            print(f"LLMTextSummarizationPegasus >> Error: Model's input should be of type 'list[str]', got '{type(prompts)}' instead.")
 
         return prompts
 

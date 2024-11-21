@@ -84,7 +84,8 @@ class LLM(ABC):
             "flax_model.msgpack",       # JAX/Flax weights
             "*.onnx",                   # ONNX files 
             "*.tflite",                 # TensorFlow Lite files
-            "*.ot"                      # Rust model
+            "*.ot",                     # Rust model
+            "tf_weights_dict.pkl",      # Some TF models
         ]
 
         snapshot_download(repo_id=self.model_name, local_dir=self.model_folder, ignore_patterns=ignore_patterns, allow_patterns=None)

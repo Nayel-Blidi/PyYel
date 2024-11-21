@@ -1,7 +1,7 @@
 import os, sys
 
 from tqdm import tqdm
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 from accelerate import init_empty_weights
 
 from .LLM import LLM
@@ -60,14 +60,14 @@ class LLMTextSummarizationBART(LLM):
         """
         
         with init_empty_weights(include_buffers=True):
-            empty_model = AutoModelForSequenceClassification.from_pretrained(self.model_folder)
+            empty_model = AutoModelForSeq2SeqLM.from_pretrained(self.model_folder)
             self._device_map(model=empty_model, dtype_correction=1, display=display)
             del empty_model
 
         # MODEL SETUP (loading)
-        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_folder, 
-                                                                        trust_remote_code=True, 
-                                                                        device_map=self.device_map)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_folder, 
+                                                            trust_remote_code=True, 
+                                                            device_map=self.device_map)
         
         # TOKENIZER SETUP (loading)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_folder, 
