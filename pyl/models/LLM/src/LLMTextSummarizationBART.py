@@ -59,15 +59,16 @@ class LLMTextSummarizationBART(LLM):
             - Reason: TODO
         """
         
-        with init_empty_weights(include_buffers=True):
-            empty_model = AutoModelForSeq2SeqLM.from_pretrained(self.model_folder)
-            self._device_map(model=empty_model, dtype_correction=1, display=display)
-            del empty_model
+        # with init_empty_weights(include_buffers=True):
+        #     empty_model = AutoModelForSeq2SeqLM.from_pretrained(self.model_folder)
+        #     self._device_map(model=empty_model, dtype_correction=1, display=display)
+        #     del empty_model
 
         # MODEL SETUP (loading)
         self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_folder, 
                                                             trust_remote_code=True, 
-                                                            device_map=self.device_map)
+                                                            # device_map=self.device_map
+                                                            device_map=None)
         
         # TOKENIZER SETUP (loading)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_folder, 
@@ -130,7 +131,7 @@ class LLMTextSummarizationBART(LLM):
         summarization_results = []
         for result in results:
             # TODO
-            summarization_results.append(result)
+            summarization_results.append(result[0]["summary_text"])
 
         return summarization_results
 
